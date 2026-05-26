@@ -30,6 +30,13 @@ var foundationSkills = []model.SkillID{
 	model.SkillWorkUnitCommits,
 }
 
+var memorySkills = []model.SkillID{
+	model.SkillMemoryRecall,
+	model.SkillMemoryCapture,
+	model.SkillMemoryConsolidate,
+	model.SkillMemoryHandoff,
+}
+
 // SkillsForPreset returns which skills should be installed for a given preset.
 //
 //   - "minimal" / PresetMinimal:       SDD skills only
@@ -64,6 +71,10 @@ func AllSkillIDs() []model.SkillID {
 	all = append(all, sddSkills...)
 	all = append(all, foundationSkills...)
 	return all
+}
+
+func MemorySkillIDs() []model.SkillID {
+	return copySkills(memorySkills)
 }
 
 func copySkills(src []model.SkillID) []model.SkillID {

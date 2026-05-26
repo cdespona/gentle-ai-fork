@@ -18,6 +18,14 @@ func RenderDryRun(result InstallResult) string {
 	_, _ = fmt.Fprintf(b, "Unsupported agents: %s\n", joinAgentIDs(result.Resolved.UnsupportedAgents))
 	_, _ = fmt.Fprintf(b, "Persona: %s\n", result.Selection.Persona)
 	_, _ = fmt.Fprintf(b, "Preset: %s\n", result.Selection.Preset)
+	if result.Selection.MemoryBackend != "" {
+		_, _ = fmt.Fprintf(b, "Memory backend: %s\n", result.Selection.MemoryBackend)
+	}
+	if result.Selection.MemoryBackend == model.MemoryBackendMarkdown {
+		_, _ = fmt.Fprintf(b, "Memory vault: %s\n", result.Selection.MemoryVault)
+		_, _ = fmt.Fprintf(b, "Memory namespace: %s\n", result.Selection.MemoryNamespace)
+		_, _ = fmt.Fprintf(b, "Memory project: %s\n", result.Selection.MemoryProject)
+	}
 	if result.Selection.SDDMode != "" {
 		_, _ = fmt.Fprintf(b, "SDD mode: %s\n", result.Selection.SDDMode)
 	}

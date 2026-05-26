@@ -18,14 +18,22 @@ func NewResolver(graph Graph) Resolver {
 func (r dependencyResolver) Resolve(selection model.Selection) (ResolvedPlan, error) {
 	resolved := ResolvedPlan{}
 
+	components := append([]model.ComponentID(nil), selection.Components...)
+	if memoryDependency := memoryDependencyForSDD(selection); memoryDependency != "" {
+		components = append(components, memoryDependency)
+	}
+	components = uniqueComponents(components)
+
 	selectedSet := make(map[model.ComponentID]struct{}, len(selection.Components))
 	dependencies := map[model.ComponentID][]model.ComponentID{}
 	for _, selected := range selection.Components {
+		selectedSet[selected] = struct{}{}
+	}
+	for _, selected := range components {
 		if !r.graph.Has(selected) {
 			return ResolvedPlan{}, fmt.Errorf("unknown component %q", selected)
 		}
 
-		selectedSet[selected] = struct{}{}
 		if err := r.expandDependencies(selected, dependencies); err != nil {
 			return ResolvedPlan{}, err
 		}
@@ -59,6 +67,46 @@ func (r dependencyResolver) Resolve(selection model.Selection) (ResolvedPlan, er
 	}
 
 	return resolved, nil
+}
+
+func memoryDependencyForSDD(selection model.Selection) model.ComponentID {
+	if !hasComponent(selection.Components, model.ComponentSDD) && !hasComponent(selection.Components, model.ComponentSkills) {
+		return ""
+	}
+	if hasComponent(selection.Components, model.ComponentEngram) || hasComponent(selection.Components, model.ComponentMarkdownMemory) {
+		return ""
+	}
+
+	switch selection.MemoryBackend {
+	case model.MemoryBackendMarkdown:
+		return model.ComponentMarkdownMemory
+	case model.MemoryBackendNone:
+		return ""
+	default:
+		return model.ComponentEngram
+	}
+}
+
+func hasComponent(components []model.ComponentID, target model.ComponentID) bool {
+	for _, component := range components {
+		if component == target {
+			return true
+		}
+	}
+	return false
+}
+
+func uniqueComponents(components []model.ComponentID) []model.ComponentID {
+	seen := make(map[model.ComponentID]struct{}, len(components))
+	result := make([]model.ComponentID, 0, len(components))
+	for _, component := range components {
+		if _, ok := seen[component]; ok {
+			continue
+		}
+		seen[component] = struct{}{}
+		result = append(result, component)
+	}
+	return result
 }
 
 func (r dependencyResolver) expandDependencies(component model.ComponentID, dependencies map[model.ComponentID][]model.ComponentID) error {

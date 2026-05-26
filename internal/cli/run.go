@@ -18,6 +18,8 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
 	"github.com/gentleman-programming/gentle-ai/internal/components/engram"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
+	"github.com/gentleman-programming/gentle-ai/internal/components/leanworkflow"
+	"github.com/gentleman-programming/gentle-ai/internal/components/markdownmemory"
 	"github.com/gentleman-programming/gentle-ai/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/internal/components/opencodeplugin"
 	"github.com/gentleman-programming/gentle-ai/internal/components/permissions"
@@ -157,6 +159,10 @@ func RunInstall(args []string, detection system.DetectionResult) (InstallResult,
 		ClaudeModelAssignments: claudeAliasesToStrings(input.Selection.ClaudeModelAssignments),
 		ModelAssignments:       modelAssignmentsToState(input.Selection.ModelAssignments),
 		Persona:                string(input.Selection.Persona),
+		MemoryBackend:          string(input.Selection.MemoryBackend),
+		MemoryVault:            input.Selection.MemoryVault,
+		MemoryNamespace:        input.Selection.MemoryNamespace,
+		MemoryProject:          input.Selection.MemoryProject,
 	})
 
 	return result, nil
@@ -295,7 +301,7 @@ func (r *installRuntime) stagePlan() pipeline.StagePlan {
 	apply = append(apply, rollbackRestoreStep{id: "apply:rollback-restore", state: r.state})
 
 	// Before installing components, ensure modular agents have their system prompt hub.
-	// This ensures that SDD or Engram can inject their modules even if Persona is skipped.
+	// This ensures that SDD or memory can inject their modules even if Persona is skipped.
 	for _, agent := range r.resolved.Agents {
 		if agent == model.AgentKimi {
 			apply = append(apply, kimiSystemPromptHubStep{id: "agent:kimi-prompt-hub", homeDir: r.homeDir})
@@ -580,6 +586,15 @@ func (s componentApplyStep) Run() error {
 			}
 		}
 		return nil
+	case model.ComponentMarkdownMemory:
+		cfg := markdownMemoryConfig(s.selection)
+		for _, adapter := range adapters {
+			targetDir := componentInjectionDir(s.homeDir, s.workspaceDir, adapter)
+			if _, err := markdownmemory.Inject(targetDir, adapter, cfg); err != nil {
+				return fmt.Errorf("inject markdown memory for %q: %w", adapter.Agent(), err)
+			}
+		}
+		return nil
 	case model.ComponentContext7:
 		for _, adapter := range adapters {
 			if _, err := mcp.Inject(s.homeDir, adapter); err != nil {
@@ -687,6 +702,13 @@ func (s componentApplyStep) Run() error {
 	case model.ComponentOpenCodeGentleLogo:
 		if _, err := opencodeplugin.Install(s.homeDir, model.OpenCodePluginGentleLogo); err != nil {
 			return fmt.Errorf("install OpenCode Gentle Logo plugin: %w", err)
+		}
+		return nil
+	case model.ComponentOpenCodeLeanWorkflow:
+		for _, adapter := range adapters {
+			if _, err := leanworkflow.Inject(s.homeDir, s.workspaceDir, adapter); err != nil {
+				return fmt.Errorf("inject lean OpenCode workflow for %q: %w", adapter.Agent(), err)
+			}
 		}
 		return nil
 	default:
@@ -844,11 +866,26 @@ func executeCommand(name string, args ...string) error {
 // selectedSkillIDs returns the skill IDs to install. If the selection
 // has explicit skills, those are used; otherwise skills are derived from the preset.
 func selectedSkillIDs(selection model.Selection) []model.SkillID {
+	var skillIDs []model.SkillID
 	if len(selection.Skills) > 0 {
-		return selection.Skills
+		skillIDs = append(skillIDs, selection.Skills...)
+	} else {
+		skillIDs = append(skillIDs, skills.SkillsForPreset(selection.Preset)...)
 	}
 
-	return skills.SkillsForPreset(selection.Preset)
+	if selection.MemoryBackend == model.MemoryBackendMarkdown {
+		skillIDs = append(skillIDs, skills.MemorySkillIDs()...)
+	}
+
+	return unique(skillIDs)
+}
+
+func markdownMemoryConfig(selection model.Selection) markdownmemory.Config {
+	return markdownmemory.Config{
+		VaultRoot: selection.MemoryVault,
+		Namespace: selection.MemoryNamespace,
+		Project:   selection.MemoryProject,
+	}
 }
 
 func backupTargets(homeDir, workspaceDir string, selection model.Selection, resolved planner.ResolvedPlan) []string {
@@ -906,6 +943,11 @@ func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.S
 				}
 			}
 			if adapter.SystemPromptStrategy() == model.StrategyMarkdownSections {
+				paths = append(paths, adapter.SystemPromptFile(targetDir))
+			}
+		case model.ComponentMarkdownMemory:
+			paths = append(paths, markdownmemory.Paths(markdownMemoryConfig(selection))...)
+			if adapter.Agent() == model.AgentOpenCode || adapter.Agent() == model.AgentCodex {
 				paths = append(paths, adapter.SystemPromptFile(targetDir))
 			}
 		case model.ComponentSDD:
@@ -1026,6 +1068,8 @@ func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.S
 				filepath.Join(homeDir, ".config", "opencode", "tui-plugins", "gentle-logo.tsx"),
 				filepath.Join(homeDir, ".config", "opencode", "tui.json"),
 			)
+		case model.ComponentOpenCodeLeanWorkflow:
+			paths = append(paths, leanworkflow.Paths(homeDir, workspaceDir, adapter)...)
 		}
 	}
 

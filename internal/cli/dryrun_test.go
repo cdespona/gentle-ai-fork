@@ -32,3 +32,28 @@ func TestRenderDryRunIncludesPlatformDecision(t *testing.T) {
 		t.Fatalf("RenderDryRun() missing platform decision\noutput=%s", output)
 	}
 }
+
+func TestRenderDryRunIncludesMarkdownMemorySelection(t *testing.T) {
+	result := InstallResult{
+		Selection: model.Selection{
+			Persona:         model.PersonaGentleman,
+			Preset:          model.PresetFullGentleman,
+			MemoryBackend:   model.MemoryBackendMarkdown,
+			MemoryVault:     "/tmp/vault",
+			MemoryNamespace: "machine/agent-memory",
+			MemoryProject:   "gentle-ai-fork",
+		},
+	}
+
+	output := RenderDryRun(result)
+	for _, want := range []string{
+		"Memory backend: markdown",
+		"Memory vault: /tmp/vault",
+		"Memory namespace: machine/agent-memory",
+		"Memory project: gentle-ai-fork",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("RenderDryRun() missing %q\noutput=%s", want, output)
+		}
+	}
+}

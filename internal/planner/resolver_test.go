@@ -94,6 +94,45 @@ func TestResolverSDDOnlyDoesNotForcePersona(t *testing.T) {
 	}
 }
 
+func TestResolverUsesMarkdownMemoryForSDDWhenSelected(t *testing.T) {
+	resolver := NewResolver(MVPGraph())
+
+	selection := model.Selection{
+		Components:    []model.ComponentID{model.ComponentSDD},
+		MemoryBackend: model.MemoryBackendMarkdown,
+	}
+
+	plan, err := resolver.Resolve(selection)
+	if err != nil {
+		t.Fatalf("Resolve() returned error: %v", err)
+	}
+
+	if !hasTestComponent(plan.OrderedComponents, model.ComponentMarkdownMemory) {
+		t.Fatalf("Resolve() components missing markdown memory: %v", plan.OrderedComponents)
+	}
+	if hasTestComponent(plan.OrderedComponents, model.ComponentEngram) {
+		t.Fatalf("Resolve() components include engram for markdown backend: %v", plan.OrderedComponents)
+	}
+}
+
+func TestResolverSkipsMemoryForSDDWhenNoneSelected(t *testing.T) {
+	resolver := NewResolver(MVPGraph())
+
+	selection := model.Selection{
+		Components:    []model.ComponentID{model.ComponentSDD},
+		MemoryBackend: model.MemoryBackendNone,
+	}
+
+	plan, err := resolver.Resolve(selection)
+	if err != nil {
+		t.Fatalf("Resolve() returned error: %v", err)
+	}
+
+	if hasTestComponent(plan.OrderedComponents, model.ComponentEngram) || hasTestComponent(plan.OrderedComponents, model.ComponentMarkdownMemory) {
+		t.Fatalf("Resolve() should not include persistent memory for none backend: %v", plan.OrderedComponents)
+	}
+}
+
 func TestResolverPersonaAndEngramWithoutSDD(t *testing.T) {
 	resolver := NewResolver(MVPGraph())
 
@@ -134,4 +173,13 @@ func TestResolverExcludesUnsupportedAgents(t *testing.T) {
 	if !reflect.DeepEqual(plan.UnsupportedAgents, []model.AgentID{model.AgentID("unknown-agent")}) {
 		t.Fatalf("Resolve() unsupported agents = %v", plan.UnsupportedAgents)
 	}
+}
+
+func hasTestComponent(components []model.ComponentID, target model.ComponentID) bool {
+	for _, component := range components {
+		if component == target {
+			return true
+		}
+	}
+	return false
 }

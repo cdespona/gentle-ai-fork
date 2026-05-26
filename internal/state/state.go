@@ -44,6 +44,11 @@ type InstallState struct {
 	// Empty for state files written before persona persistence was added —
 	// callers fall back to PersonaGentleman in that case.
 	Persona string `json:"persona,omitempty"`
+
+	MemoryBackend   string `json:"memory_backend,omitempty"`
+	MemoryVault     string `json:"memory_vault,omitempty"`
+	MemoryNamespace string `json:"memory_namespace,omitempty"`
+	MemoryProject   string `json:"memory_project,omitempty"`
 }
 
 // Path returns the absolute path to the state file for the given home directory.

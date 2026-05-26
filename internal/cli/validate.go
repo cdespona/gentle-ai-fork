@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/gentleman-programming/gentle-ai/internal/catalog"
@@ -35,6 +37,11 @@ func NormalizeInstallFlags(flags InstallFlags, detection system.DetectionResult)
 	}
 	selection.Preset = preset
 
+	memoryBackend, err := normalizeMemoryBackend(flags.MemoryBackend)
+	if err != nil {
+		return InstallInput{}, err
+	}
+
 	components, err := normalizeComponents(flags.Components, selection.Preset)
 	if err != nil {
 		return InstallInput{}, err
@@ -42,8 +49,23 @@ func NormalizeInstallFlags(flags InstallFlags, detection system.DetectionResult)
 	if len(flags.Components) == 0 && strings.TrimSpace(flags.Preset) == "" && isPiOnlyAgents(selection.Agents) {
 		components = piOnlyComponents()
 	}
+	if hasComponent(components, model.ComponentOpenCodeLeanWorkflow) {
+		if strings.TrimSpace(flags.MemoryBackend) != "" && memoryBackend != model.MemoryBackendMarkdown {
+			return InstallInput{}, fmt.Errorf("component %q requires --memory-backend markdown", model.ComponentOpenCodeLeanWorkflow)
+		}
+		memoryBackend = model.MemoryBackendMarkdown
+	}
 
-	selection.Components = components
+	selection.MemoryBackend = memoryBackend
+	memoryVault, memoryNamespace, memoryProject, err := normalizeMarkdownMemoryConfig(flags, memoryBackend)
+	if err != nil {
+		return InstallInput{}, err
+	}
+	selection.MemoryVault = memoryVault
+	selection.MemoryNamespace = memoryNamespace
+	selection.MemoryProject = memoryProject
+
+	selection.Components = componentsForMemoryBackend(components, memoryBackend)
 
 	skills, err := normalizeSkills(flags.Skills)
 	if err != nil {
@@ -141,6 +163,109 @@ func normalizeSDDMode(value string) (model.SDDModeID, error) {
 	default:
 		return "", fmt.Errorf("unsupported sdd-mode %q (valid: single, multi)", value)
 	}
+}
+
+func normalizeMemoryBackend(value string) (model.MemoryBackendID, error) {
+	if strings.TrimSpace(value) == "" {
+		return model.MemoryBackendEngram, nil
+	}
+
+	switch model.MemoryBackendID(value) {
+	case model.MemoryBackendEngram, model.MemoryBackendMarkdown, model.MemoryBackendNone:
+		return model.MemoryBackendID(value), nil
+	default:
+		return "", fmt.Errorf("unsupported memory-backend %q (valid: engram, markdown, none)", value)
+	}
+}
+
+func normalizeMarkdownMemoryConfig(flags InstallFlags, backend model.MemoryBackendID) (vault, namespace, project string, err error) {
+	vault = strings.TrimSpace(flags.MemoryVault)
+	namespace = strings.TrimSpace(flags.MemoryNamespace)
+	project = strings.TrimSpace(flags.MemoryProject)
+
+	if backend != model.MemoryBackendMarkdown {
+		return vault, namespace, project, nil
+	}
+
+	if vault == "" {
+		vault = "/Users/cdespona/Documents/thoughts/central/central"
+	}
+	if !filepath.IsAbs(vault) {
+		return "", "", "", fmt.Errorf("memory-vault must be an absolute path")
+	}
+	if namespace == "" {
+		namespace = "machine/agent-memory"
+	}
+	if err := validateMemoryNamespace(namespace); err != nil {
+		return "", "", "", err
+	}
+	if project == "" {
+		project = "gentle-ai-fork"
+	}
+	if err := validateMemoryProject(project); err != nil {
+		return "", "", "", err
+	}
+
+	return filepath.Clean(vault), filepath.ToSlash(filepath.Clean(namespace)), project, nil
+}
+
+func validateMemoryNamespace(namespace string) error {
+	if filepath.IsAbs(namespace) {
+		return fmt.Errorf("memory-namespace must be relative to memory-vault")
+	}
+	clean := filepath.ToSlash(filepath.Clean(namespace))
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(clean, "/../") {
+		return fmt.Errorf("memory-namespace %q escapes memory-vault", namespace)
+	}
+	if clean != "machine/agent-memory" && !strings.HasPrefix(clean, "machine/agent-memory/") {
+		return fmt.Errorf("memory-namespace must stay under machine/agent-memory")
+	}
+	return nil
+}
+
+var memoryProjectPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
+
+func validateMemoryProject(project string) error {
+	if !memoryProjectPattern.MatchString(project) {
+		return fmt.Errorf("memory-project %q must be a lowercase slug using letters, numbers, dots, underscores, or hyphens", project)
+	}
+	return nil
+}
+
+func componentsForMemoryBackend(components []model.ComponentID, backend model.MemoryBackendID) []model.ComponentID {
+	filtered := make([]model.ComponentID, 0, len(components)+1)
+	hasSDD := false
+	hasMarkdown := false
+	hasEngram := false
+	for _, component := range components {
+		if component == model.ComponentSDD {
+			hasSDD = true
+		}
+		if component == model.ComponentEngram {
+			hasEngram = true
+		}
+		if component == model.ComponentMarkdownMemory {
+			hasMarkdown = true
+		}
+		if component == model.ComponentEngram || component == model.ComponentMarkdownMemory {
+			continue
+		}
+		filtered = append(filtered, component)
+	}
+
+	switch backend {
+	case model.MemoryBackendMarkdown:
+		if hasSDD || hasEngram || hasMarkdown {
+			filtered = append([]model.ComponentID{model.ComponentMarkdownMemory}, filtered...)
+		}
+	case model.MemoryBackendNone:
+		return filtered
+	default:
+		if hasEngram || hasSDD || hasMarkdown {
+			filtered = append([]model.ComponentID{model.ComponentEngram}, filtered...)
+		}
+	}
+	return unique(filtered)
 }
 
 func componentsForPreset(preset model.PresetID) []model.ComponentID {
