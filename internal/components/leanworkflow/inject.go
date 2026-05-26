@@ -42,9 +42,17 @@ type InjectionResult struct {
 	Files   []string
 }
 
-func Inject(homeDir, workspaceDir string, adapter agents.Adapter) (InjectionResult, error) {
+type InjectOptions struct {
+	OpenCodeModelAssignments map[string]model.ModelAssignment
+}
+
+func Inject(homeDir, workspaceDir string, adapter agents.Adapter, options ...InjectOptions) (InjectionResult, error) {
 	if adapter.Agent() != model.AgentOpenCode {
 		return InjectionResult{}, nil
+	}
+	opts := InjectOptions{}
+	if len(options) > 0 {
+		opts = options[0]
 	}
 
 	files := []string{}
@@ -110,6 +118,20 @@ func Inject(homeDir, workspaceDir string, adapter agents.Adapter) (InjectionResu
 	overlay, err := renderOpenCodeOverlay(promptRoot)
 	if err != nil {
 		return InjectionResult{}, err
+	}
+	rootModelID, err := readOpenCodeRootModel(settingsPath)
+	if err != nil {
+		return InjectionResult{}, err
+	}
+	existingAgentKeys, err := readExistingAgentKeys(settingsPath)
+	if err != nil {
+		return InjectionResult{}, err
+	}
+	if len(opts.OpenCodeModelAssignments) > 0 || rootModelID != "" {
+		overlay, err = injectModelAssignments(overlay, opts.OpenCodeModelAssignments, rootModelID, existingAgentKeys)
+		if err != nil {
+			return InjectionResult{}, err
+		}
 	}
 	settingsResult, err := mergeJSONFile(settingsPath, overlay)
 	if err != nil {
@@ -196,6 +218,98 @@ func renderOpenCodeOverlay(promptRoot string) ([]byte, error) {
 		},
 	}
 	return json.MarshalIndent(root, "", "  ")
+}
+
+func injectModelAssignments(overlayBytes []byte, assignments map[string]model.ModelAssignment, rootModelID string, existingAgentKeys map[string]bool) ([]byte, error) {
+	var overlay map[string]any
+	if err := json.Unmarshal(overlayBytes, &overlay); err != nil {
+		return nil, fmt.Errorf("unmarshal lean workflow overlay for model injection: %w", err)
+	}
+
+	agentsRaw, ok := overlay["agent"]
+	if !ok {
+		return overlayBytes, nil
+	}
+	agents, ok := agentsRaw.(map[string]any)
+	if !ok {
+		return overlayBytes, nil
+	}
+
+	for name, agentDef := range agents {
+		agentMap, ok := agentDef.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		assignment, hasExplicitAssignment := assignments[name]
+		switch {
+		case hasExplicitAssignment && assignment.ProviderID != "" && assignment.ModelID != "":
+			agentMap["model"] = assignment.FullID()
+			if assignment.Effort != "" {
+				agentMap["variant"] = assignment.Effort
+			} else {
+				agentMap["variant"] = ""
+			}
+		case existingAgentKeys[name]:
+			continue
+		case rootModelID != "":
+			agentMap["model"] = rootModelID
+			agentMap["variant"] = ""
+		}
+	}
+
+	result, err := json.MarshalIndent(overlay, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshal lean workflow overlay after model injection: %w", err)
+	}
+	return append(result, '\n'), nil
+}
+
+func readOpenCodeRootModel(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("read OpenCode root model from %q: %w", path, err)
+	}
+
+	root := map[string]any{}
+	if err := json.Unmarshal(data, &root); err != nil {
+		return "", nil
+	}
+
+	modelID, _ := root["model"].(string)
+	return modelID, nil
+}
+
+func readExistingAgentKeys(path string) (map[string]bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]bool{}, nil
+		}
+		return nil, fmt.Errorf("read existing OpenCode agent keys from %q: %w", path, err)
+	}
+
+	root := map[string]any{}
+	if err := json.Unmarshal(data, &root); err != nil {
+		return map[string]bool{}, nil
+	}
+	agentsRaw, ok := root["agent"]
+	if !ok {
+		return map[string]bool{}, nil
+	}
+	agents, ok := agentsRaw.(map[string]any)
+	if !ok {
+		return map[string]bool{}, nil
+	}
+
+	result := make(map[string]bool, len(agents))
+	for name := range agents {
+		result[name] = true
+	}
+	return result, nil
 }
 
 func mergeJSONFile(path string, overlay []byte) (filemerge.WriteResult, error) {

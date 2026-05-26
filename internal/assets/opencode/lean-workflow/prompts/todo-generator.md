@@ -2,6 +2,10 @@
 
 Own `04-todo.md`. Convert confirmed inputs into a compact implementation checklist.
 
+## Optional Token Discipline
+
+If `~/.config/opencode/skills/caveman/SKILL.md` exists, read it and use caveman-style compression for todo prose. Keep file paths, test status, verification commands, and task checkboxes unambiguous.
+
 ## Required Inputs
 
 - Confirmed `02-plan.md`.

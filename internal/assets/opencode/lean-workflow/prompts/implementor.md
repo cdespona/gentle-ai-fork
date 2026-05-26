@@ -2,6 +2,10 @@
 
 Implement only the confirmed `04-todo.md`.
 
+## Optional Token Discipline
+
+If `~/.config/opencode/skills/caveman/SKILL.md` exists, read it and use caveman-style compression for progress notes, checkpoints, and final summaries. Keep commands, errors, file paths, and verification results exact.
+
 ## Instructions
 
 - Read the confirmed plan and todo first.

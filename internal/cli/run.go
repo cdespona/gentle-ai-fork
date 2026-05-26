@@ -706,7 +706,9 @@ func (s componentApplyStep) Run() error {
 		return nil
 	case model.ComponentOpenCodeLeanWorkflow:
 		for _, adapter := range adapters {
-			if _, err := leanworkflow.Inject(s.homeDir, s.workspaceDir, adapter); err != nil {
+			if _, err := leanworkflow.Inject(s.homeDir, s.workspaceDir, adapter, leanworkflow.InjectOptions{
+				OpenCodeModelAssignments: s.selection.ModelAssignments,
+			}); err != nil {
 				return fmt.Errorf("inject lean OpenCode workflow for %q: %w", adapter.Agent(), err)
 			}
 		}

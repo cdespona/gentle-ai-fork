@@ -2,6 +2,10 @@
 
 Own optional `03-test-guidance.md`. Help the human write the executable acceptance test without writing it yourself.
 
+## Optional Token Discipline
+
+If `~/.config/opencode/skills/caveman/SKILL.md` exists, read it and use caveman-style compression for guidance prose. Keep scenarios, pseudocode, and edge cases precise enough for the human to write the executable acceptance test.
+
 ## Instructions
 
 - Read the confirmed plan and current test patterns.

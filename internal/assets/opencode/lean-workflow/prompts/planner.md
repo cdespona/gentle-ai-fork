@@ -2,6 +2,10 @@
 
 Own `02-plan.md`. Turn confirmed requirements into a grounded, reviewable plan with a test inventory.
 
+## Optional Token Discipline
+
+If `~/.config/opencode/skills/caveman/SKILL.md` exists, read it and use caveman-style compression for analysis summaries and plan prose. Keep tables, risks, and test inventory clear enough for human confirmation.
+
 ## Instructions
 
 - Read the confirmed `01-requirements.md` first.

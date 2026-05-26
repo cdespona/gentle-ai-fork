@@ -712,7 +712,9 @@ func (s componentSyncStep) Run() error {
 
 	case model.ComponentOpenCodeLeanWorkflow:
 		for _, adapter := range adapters {
-			res, err := leanworkflow.Inject(s.homeDir, s.workspaceDir, adapter)
+			res, err := leanworkflow.Inject(s.homeDir, s.workspaceDir, adapter, leanworkflow.InjectOptions{
+				OpenCodeModelAssignments: s.selection.ModelAssignments,
+			})
 			if err != nil {
 				return fmt.Errorf("sync lean OpenCode workflow for %q: %w", adapter.Agent(), err)
 			}

@@ -2,6 +2,10 @@
 
 Own `01-requirements.md`. Improve requirements before any implementation plan exists.
 
+## Optional Token Discipline
+
+If `~/.config/opencode/skills/caveman/SKILL.md` exists, read it and use caveman-style compression for discovery notes, question batches, and handoff text. Keep requirements artifact sections valid, specific, and readable.
+
 ## Instructions
 
 - Inspect focused docs, code, and targeted Markdown memory before asking questions.

@@ -86,7 +86,7 @@ func TestInjectWritesSkillFilesForClaude(t *testing.T) {
 func TestInjectCopiesNonSDDSkillReferences(t *testing.T) {
 	home := t.TempDir()
 
-	result, err := Inject(home, opencodeAdapter(), []model.SkillID{model.SkillGoTesting, model.SkillChainedPR})
+	result, err := Inject(home, opencodeAdapter(), []model.SkillID{model.SkillGoTesting, model.SkillChainedPR, model.SkillID("tdd"), model.SkillID("caveman")})
 	if err != nil {
 		t.Fatalf("Inject() error = %v", err)
 	}
@@ -101,6 +101,10 @@ func TestInjectCopiesNonSDDSkillReferences(t *testing.T) {
 	}{
 		{name: "go-testing examples", path: filepath.Join(skillsDir, "go-testing", "references", "examples.md")},
 		{name: "chained-pr details", path: filepath.Join(skillsDir, "chained-pr", "references", "chaining-details.md")},
+		{name: "tdd tests reference", path: filepath.Join(skillsDir, "tdd", "tests.md")},
+		{name: "tdd license", path: filepath.Join(skillsDir, "tdd", "LICENSE.md")},
+		{name: "caveman skill", path: filepath.Join(skillsDir, "caveman", "SKILL.md")},
+		{name: "caveman license", path: filepath.Join(skillsDir, "caveman", "LICENSE.md")},
 	}
 
 	for _, tt := range tests {

@@ -1,11 +1,11 @@
 # Plan: Lean OpenCode Workflow With Markdown Memory
 
 **Generated**: 2026-05-21
-**Status**: Draft for discussion
+**Status**: Implemented; pending validation
 
-This plan compares the current lightweight OpenCode agent workflow with Gentle-AI's broader SDD setup and proposes a smaller hybrid: create an alternate orchestrated workflow, add Markdown memory and safer permissions, and improve requirements discovery with a bounded grill-style clarification phase.
+This plan compares the current lightweight OpenCode agent workflow with Gentle-AI's broader SDD setup and records the implemented smaller hybrid: an alternate orchestrated workflow, Markdown memory, safer permissions, and bounded grill-style requirements discovery.
 
-The first deliverable is a validated alternate workflow for `event-catalog-sync`, not a direct replacement of the current agents. Once the alternate workflow proves useful in real work, promote it into a reusable Gentle-AI/OpenCode recipe or installable component.
+The first deliverable is an implemented alternate workflow for `event-catalog-sync`, not a direct replacement of the current agents. The remaining work is validation on real tasks. Once the alternate workflow proves useful in real work, promote it into a reusable Gentle-AI/OpenCode recipe or installable component.
 
 ## Quick Path
 
@@ -533,6 +533,10 @@ Install the required Markdown memory skills with the pilot workflow when the ins
 
 Configure the Markdown memory backend as part of the pilot install so validation uses one memory path. Keep any required memory project name as an install input if the existing installer needs it.
 
+Optional skills should remain add-ons to the implemented workflow rather than core dependencies. They can be installed explicitly through the existing `--skill` or `--skills` flags. Supported optional add-ons include `tdd` and `caveman`, both vendored from Matt Pocock's MIT-licensed skills repository. `tdd` may guide red-green-refactor behavior in planning, test guidance, todo generation, or implementation, but it must not bypass human gates or the human-owned executable acceptance-test boundary. `caveman` may guide terse, token-conscious subagent communication, but required artifact sections, commands, paths, errors, and verification results must remain clear and exact.
+
+Lean workflow model control should follow the SDD OpenCode pattern: explicit per-agent model assignments are written into `opencode.json`, existing agent model settings are preserved, and new lean workflow agents fall back to the root OpenCode `model` when one exists. This keeps the orchestrator and hidden subagents from silently drifting onto unintended model defaults.
+
 ## Implementation Acceptance Bar
 
 The pilot is ready for installation validation when:
@@ -543,6 +547,7 @@ The pilot is ready for installation validation when:
 - installation copies local templates into the target repo without silently overwriting local edits
 - installation updates target gitignore entries for local templates and local task artifacts
 - OpenCode exposes the pilot orchestrator as the selectable entrypoint and keeps the specialized agents as subagents
+- OpenCode lean workflow agent definitions have controlled model behavior through explicit assignments, preserved existing settings, or root-model fallback
 - alternate-workflow permissions ask before every bash command
 - a test installation into `event-catalog-sync` proves the expected agents, templates, ignores, and permissions are present
 
