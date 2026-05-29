@@ -20,7 +20,7 @@ This pilot installs a separate OpenCode agent set for requirements-first code ch
 - `04-todo.md` is the implementor contract.
 - `05-checkpoint.md` is used when implementation discovers a material surprise.
 
-Each artifact starts with small frontmatter: `status` and `owner`. Human confirmation must be written back to the artifact before the next phase starts.
+Each artifact starts with small frontmatter: `status` and `owner`. Human confirmation must be written back to the artifact before the next phase starts. Agents verify workflow state by rereading artifact frontmatter directly, not by using git, because plan folders are usually gitignored. Do not add date fields unless a local template explicitly defines one.
 
 ## Acceptance Test Gate
 
