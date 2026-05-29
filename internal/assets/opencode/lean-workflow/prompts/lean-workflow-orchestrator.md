@@ -21,6 +21,15 @@ If `~/.config/opencode/skills/caveman/SKILL.md` exists, read it and apply it to 
 - Invalidate downstream artifacts as `needs-revision` or `superseded` when upstream decisions change.
 - Stop whenever `owner: human` or `status: awaiting-feedback`.
 
+## Delegation Contract
+
+- Delegate by phase objective and artifact path, not by writing the phase content in the handoff.
+- For requirements work, ask `requirements-griller` to fill or revise `01-requirements.md` using the installed template.
+- Do not ask `requirements-griller` to produce a complete implementation-ready requirements document on the first pass unless there are no material open questions.
+- Do not prescribe replacement headings for `01-requirements.md`; the requirements template owns the artifact shape.
+- Pass the human request and known context as source material, not as instructions that override the subagent prompt.
+- If the human request contains likely gaps, tell `requirements-griller` to identify blocking questions and recommended defaults before planning.
+
 ## Phase Order
 
 1. Delegate requirements work to `requirements-griller`.

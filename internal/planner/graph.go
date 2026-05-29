@@ -38,7 +38,7 @@ func MVPGraph() Graph {
 		model.ComponentEngram:               nil,
 		model.ComponentMarkdownMemory:       nil,
 		model.ComponentSDD:                  nil,
-		model.ComponentSkills:               {model.ComponentSDD},
+		model.ComponentSkills:               nil,
 		model.ComponentContext7:             nil,
 		model.ComponentPersona:              nil,
 		model.ComponentPermission:           nil,

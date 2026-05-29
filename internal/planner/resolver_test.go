@@ -7,7 +7,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/model"
 )
 
-func TestResolverAddsMissingDependenciesInOrder(t *testing.T) {
+func TestResolverKeepsStandaloneSkillsIndependent(t *testing.T) {
 	resolver := NewResolver(MVPGraph())
 
 	selection := model.Selection{
@@ -24,11 +24,11 @@ func TestResolverAddsMissingDependenciesInOrder(t *testing.T) {
 		t.Fatalf("Resolve() agents = %v", plan.Agents)
 	}
 
-	if !reflect.DeepEqual(plan.OrderedComponents, []model.ComponentID{model.ComponentEngram, model.ComponentSDD, model.ComponentSkills}) {
+	if !reflect.DeepEqual(plan.OrderedComponents, []model.ComponentID{model.ComponentSkills}) {
 		t.Fatalf("Resolve() ordered components = %v", plan.OrderedComponents)
 	}
 
-	if !reflect.DeepEqual(plan.AddedDependencies, []model.ComponentID{model.ComponentEngram, model.ComponentSDD}) {
+	if len(plan.AddedDependencies) != 0 {
 		t.Fatalf("Resolve() added dependencies = %v", plan.AddedDependencies)
 	}
 }

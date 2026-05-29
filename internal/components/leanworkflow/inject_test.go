@@ -72,6 +72,22 @@ func TestInjectInstallsLeanWorkflowAgentsTemplatesAndGitignore(t *testing.T) {
 		t.Fatalf("README missing acceptance-test guidance")
 	}
 
+	orchestratorPrompt := readTestFile(t, filepath.Join(home, ".config", "opencode", "lean-workflow", "prompts", "lean-workflow-orchestrator.md"))
+	if !strings.Contains(orchestratorPrompt, "Delegate by phase objective and artifact path") {
+		t.Fatalf("orchestrator prompt missing delegation contract")
+	}
+	if !strings.Contains(orchestratorPrompt, "Do not prescribe replacement headings for `01-requirements.md`") {
+		t.Fatalf("orchestrator prompt missing requirements-template guard")
+	}
+
+	grillerPrompt := readTestFile(t, filepath.Join(home, ".config", "opencode", "lean-workflow", "prompts", "requirements-griller.md"))
+	if !strings.Contains(grillerPrompt, "Treat the orchestrator handoff as context") {
+		t.Fatalf("requirements griller prompt missing handoff guard")
+	}
+	if !strings.Contains(grillerPrompt, "Put user-facing questions in `## Blocking Questions`") {
+		t.Fatalf("requirements griller prompt missing blocking-question instruction")
+	}
+
 	templatePath := filepath.Join(workspace, ".github", "lean-workflow-templates", "04-todo.md")
 	template := readTestFile(t, templatePath)
 	if !strings.Contains(template, "Acceptance test status") {

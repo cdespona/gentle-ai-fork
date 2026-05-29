@@ -634,12 +634,22 @@ func (s componentApplyStep) Run() error {
 		return nil
 	case model.ComponentSkills:
 		skillIDs := selectedSkillIDs(s.selection)
-		if len(skillIDs) == 0 {
-			return nil
+		if len(skillIDs) > 0 {
+			for _, adapter := range adapters {
+				if _, err := skills.Inject(s.homeDir, adapter, skillIDs); err != nil {
+					return fmt.Errorf("inject skills for %q: %w", adapter.Agent(), err)
+				}
+			}
 		}
-		for _, adapter := range adapters {
-			if _, err := skills.Inject(s.homeDir, adapter, skillIDs); err != nil {
-				return fmt.Errorf("inject skills for %q: %w", adapter.Agent(), err)
+		if len(s.selection.ProjectSkills) > 0 {
+			for _, adapter := range adapters {
+				if adapter.Agent() != model.AgentOpenCode {
+					continue
+				}
+				projectSkillDir := filepath.Join(s.workspaceDir, ".opencode", "skills")
+				if _, err := skills.InjectToDir(projectSkillDir, s.selection.ProjectSkills); err != nil {
+					return fmt.Errorf("inject project skills for %q: %w", adapter.Agent(), err)
+				}
 			}
 		}
 		return nil
@@ -871,6 +881,9 @@ func selectedSkillIDs(selection model.Selection) []model.SkillID {
 	var skillIDs []model.SkillID
 	if len(selection.Skills) > 0 {
 		skillIDs = append(skillIDs, selection.Skills...)
+	} else if len(selection.ProjectSkills) > 0 {
+		// Project-scoped skill installs should not accidentally global-install
+		// the preset skill bundle just because the skills component is selected.
 	} else {
 		skillIDs = append(skillIDs, skills.SkillsForPreset(selection.Preset)...)
 	}
@@ -1013,6 +1026,15 @@ func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.S
 				path := skills.SkillPathForAgent(homeDir, adapter, skillID)
 				if path != "" {
 					paths = append(paths, path)
+				}
+			}
+			if adapter.Agent() == model.AgentOpenCode {
+				projectSkillDir := filepath.Join(workspaceDir, ".opencode", "skills")
+				for _, skillID := range selection.ProjectSkills {
+					if skills.IsSDDSkill(skillID) {
+						continue
+					}
+					paths = append(paths, skills.SkillPathInDir(projectSkillDir, skillID))
 				}
 			}
 		case model.ComponentContext7:

@@ -16,6 +16,7 @@ func TestParseInstallFlagsSupportsCSVAndRepeated(t *testing.T) {
 		"--component", "engram,sdd",
 		"--component", "skills",
 		"--skill", "sdd-apply",
+		"--project-skills", "java-development,kotlin-development",
 		"--persona", "neutral",
 		"--preset", "minimal",
 		"--dry-run",
@@ -30,6 +31,10 @@ func TestParseInstallFlagsSupportsCSVAndRepeated(t *testing.T) {
 
 	if !reflect.DeepEqual(flags.Components, []string{"engram", "sdd", "skills"}) {
 		t.Fatalf("components = %v", flags.Components)
+	}
+
+	if !reflect.DeepEqual(flags.ProjectSkills, []string{"java-development", "kotlin-development"}) {
+		t.Fatalf("project skills = %v", flags.ProjectSkills)
 	}
 
 	if !flags.DryRun {
@@ -130,6 +135,50 @@ func TestNormalizeInstallFlagsLeanWorkflowRejectsNonMarkdownMemory(t *testing.T)
 	}
 	if !strings.Contains(err.Error(), "requires --memory-backend markdown") {
 		t.Fatalf("error = %v, want markdown requirement", err)
+	}
+}
+
+func TestNormalizeInstallFlagsAcceptsLeanWorkflowOptionalSkills(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		Agents:     []string{string(model.AgentOpenCode)},
+		Components: []string{string(model.ComponentOpenCodeLeanWorkflow), string(model.ComponentSkills)},
+		Skills: []string{
+			string(model.SkillTDD),
+			string(model.SkillCaveman),
+		},
+		ProjectSkills: []string{
+			string(model.SkillCodeComments),
+			string(model.SkillHexagonalArch),
+			string(model.SkillJavaDevelopment),
+			string(model.SkillKotlinDevelopment),
+			string(model.SkillTacticalDDD),
+			string(model.SkillTestTypeClass),
+		},
+		MemoryBackend: string(model.MemoryBackendMarkdown),
+		MemoryProject: "event-catalog-sync",
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+
+	wantGlobal := []model.SkillID{
+		model.SkillTDD,
+		model.SkillCaveman,
+	}
+	if !reflect.DeepEqual(input.Selection.Skills, wantGlobal) {
+		t.Fatalf("skills = %#v, want %#v", input.Selection.Skills, wantGlobal)
+	}
+
+	wantProject := []model.SkillID{
+		model.SkillCodeComments,
+		model.SkillHexagonalArch,
+		model.SkillJavaDevelopment,
+		model.SkillKotlinDevelopment,
+		model.SkillTacticalDDD,
+		model.SkillTestTypeClass,
+	}
+	if !reflect.DeepEqual(input.Selection.ProjectSkills, wantProject) {
+		t.Fatalf("project skills = %#v, want %#v", input.Selection.ProjectSkills, wantProject)
 	}
 }
 

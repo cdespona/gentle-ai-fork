@@ -4,6 +4,7 @@ type Selection struct {
 	Agents                 []AgentID
 	Components             []ComponentID
 	Skills                 []SkillID
+	ProjectSkills          []SkillID
 	Persona                PersonaID
 	Preset                 PresetID
 	MemoryBackend          MemoryBackendID

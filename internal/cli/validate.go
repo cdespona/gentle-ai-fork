@@ -73,6 +73,12 @@ func NormalizeInstallFlags(flags InstallFlags, detection system.DetectionResult)
 	}
 	selection.Skills = skills
 
+	projectSkills, err := normalizeSkills(flags.ProjectSkills)
+	if err != nil {
+		return InstallInput{}, err
+	}
+	selection.ProjectSkills = projectSkills
+
 	sddMode, err := normalizeSDDMode(flags.SDDMode)
 	if err != nil {
 		return InstallInput{}, err

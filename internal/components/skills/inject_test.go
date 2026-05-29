@@ -259,6 +259,27 @@ func TestInjectUsesRealEmbeddedContent(t *testing.T) {
 	}
 }
 
+func TestInjectToDirWritesProjectSkillFiles(t *testing.T) {
+	projectSkillDir := filepath.Join(t.TempDir(), ".opencode", "skills")
+
+	result, err := InjectToDir(projectSkillDir, []model.SkillID{model.SkillJavaDevelopment})
+	if err != nil {
+		t.Fatalf("InjectToDir() error = %v", err)
+	}
+	if !result.Changed {
+		t.Fatal("InjectToDir() changed = false")
+	}
+
+	for _, path := range []string{
+		filepath.Join(projectSkillDir, "java-development", "SKILL.md"),
+		filepath.Join(projectSkillDir, "java-development", "references", "java-guidelines.md"),
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected project skill file %q: %v", path, err)
+		}
+	}
+}
+
 func TestSkillPathForAgent(t *testing.T) {
 	path := SkillPathForAgent("/home/test", claudeAdapter(), model.SkillCreator)
 	want := "/home/test/.claude/skills/skill-creator/SKILL.md"

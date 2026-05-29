@@ -10,6 +10,7 @@ type InstallFlags struct {
 	Agents          []string
 	Components      []string
 	Skills          []string
+	ProjectSkills   []string
 	Persona         string
 	Preset          string
 	MemoryBackend   string
@@ -31,6 +32,8 @@ func ParseInstallFlags(args []string) (InstallFlags, error) {
 	registerListFlag(fs, "components", &opts.Components)
 	registerListFlag(fs, "skill", &opts.Skills)
 	registerListFlag(fs, "skills", &opts.Skills)
+	registerListFlag(fs, "project-skill", &opts.ProjectSkills)
+	registerListFlag(fs, "project-skills", &opts.ProjectSkills)
 	fs.StringVar(&opts.Persona, "persona", "", "persona to apply")
 	fs.StringVar(&opts.Preset, "preset", "", "preset to apply")
 	fs.StringVar(&opts.MemoryBackend, "memory-backend", "", "memory backend: engram, markdown, or none (default: engram)")

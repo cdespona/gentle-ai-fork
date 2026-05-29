@@ -70,7 +70,7 @@ func (r dependencyResolver) Resolve(selection model.Selection) (ResolvedPlan, er
 }
 
 func memoryDependencyForSDD(selection model.Selection) model.ComponentID {
-	if !hasComponent(selection.Components, model.ComponentSDD) && !hasComponent(selection.Components, model.ComponentSkills) {
+	if !hasComponent(selection.Components, model.ComponentSDD) {
 		return ""
 	}
 	if hasComponent(selection.Components, model.ComponentEngram) || hasComponent(selection.Components, model.ComponentMarkdownMemory) {
