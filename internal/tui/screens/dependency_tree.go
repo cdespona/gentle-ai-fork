@@ -17,7 +17,15 @@ func DependencyTreeOptions() []string {
 
 // AllComponents returns the full list of available components for the custom picker.
 func AllComponents() []catalog.Component {
-	return catalog.MVPComponents()
+	components := catalog.MVPComponents()
+	filtered := make([]catalog.Component, 0, len(components))
+	for _, component := range components {
+		if component.ID == model.ComponentMarkdownMemory {
+			continue
+		}
+		filtered = append(filtered, component)
+	}
+	return filtered
 }
 
 // RenderDependencyTree shows the install plan. For custom presets, it shows

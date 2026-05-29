@@ -67,7 +67,15 @@ gentle-ai install \
 gentle-ai install --dry-run \
   --agent claude-code,opencode \
   --preset full-gentleman
+
+# Use Markdown memory instead of Engram for OpenCode and Codex
+gentle-ai install \
+  --agent opencode,codex \
+  --preset full-gentleman \
+  --memory-backend markdown
 ```
+
+Markdown memory defaults to vault root `/Users/cdespona/Documents/thoughts/central/central`, namespace `machine/agent-memory`, and project slug `gentle-ai-fork`. Override those with `--memory-vault`, `--memory-namespace`, and `--memory-project`. The namespace must stay under `machine/agent-memory`.
 
 ### skill-registry refresh
 
@@ -170,6 +178,10 @@ gentle-ai -v
 | `--skill`, `--skills`         | Skills to install (comma-separated)                                                                               |
 | `--persona`                   | Persona mode: `gentleman`, `neutral`, `custom` (`custom` keeps your existing persona unmanaged)                   |
 | `--preset`                    | Preset: `full-gentleman`, `ecosystem-only`, `minimal`, `custom` (`custom` means manual component/skill selection) |
+| `--memory-backend`            | Persistent memory backend: `engram`, `markdown`, or `none`                                                        |
+| `--memory-vault`              | Absolute vault root for Markdown memory                                                                           |
+| `--memory-namespace`          | Markdown memory namespace under the vault, default `machine/agent-memory`                                         |
+| `--memory-project`            | Markdown memory project slug, default `gentle-ai-fork`                                                            |
 | `--dry-run`                   | Preview the install plan without applying changes                                                                 |
 
 ## CLI Flags (sync)
@@ -178,6 +190,10 @@ gentle-ai -v
 | ------------------------ | ---------------------------------------------------------------------------------------------------- |
 | `--agent`, `--agents`    | Agents to sync (defaults to all installed agents)                                                    |
 | `--component`            | Sync a specific component only: `sdd`, `engram`, `context7`, `skills`, `gga`, `permissions`, `theme` |
+| `--memory-backend`       | Memory backend for sync: `engram`, `markdown`, or `none`                                             |
+| `--memory-vault`         | Absolute vault root for Markdown memory                                                             |
+| `--memory-namespace`     | Markdown memory namespace under the vault, default `machine/agent-memory`                           |
+| `--memory-project`       | Markdown memory project slug, default `gentle-ai-fork`                                              |
 | `--profile`              | Create or update an SDD profile: `name:provider/model` (sets the default model for all phases)       |
 | `--profile-phase`        | Override a specific phase in a profile: `name:phase:provider/model`                                  |
 | `--sdd-profile-strategy` | OpenCode profile sync strategy: `generated-multi` or `external-single-active`                        |

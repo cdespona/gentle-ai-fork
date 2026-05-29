@@ -7,13 +7,18 @@ import (
 )
 
 type InstallFlags struct {
-	Agents     []string
-	Components []string
-	Skills     []string
-	Persona    string
-	Preset     string
-	SDDMode    string
-	DryRun     bool
+	Agents          []string
+	Components      []string
+	Skills          []string
+	ProjectSkills   []string
+	Persona         string
+	Preset          string
+	MemoryBackend   string
+	MemoryVault     string
+	MemoryNamespace string
+	MemoryProject   string
+	SDDMode         string
+	DryRun          bool
 }
 
 func ParseInstallFlags(args []string) (InstallFlags, error) {
@@ -27,8 +32,14 @@ func ParseInstallFlags(args []string) (InstallFlags, error) {
 	registerListFlag(fs, "components", &opts.Components)
 	registerListFlag(fs, "skill", &opts.Skills)
 	registerListFlag(fs, "skills", &opts.Skills)
+	registerListFlag(fs, "project-skill", &opts.ProjectSkills)
+	registerListFlag(fs, "project-skills", &opts.ProjectSkills)
 	fs.StringVar(&opts.Persona, "persona", "", "persona to apply")
 	fs.StringVar(&opts.Preset, "preset", "", "preset to apply")
+	fs.StringVar(&opts.MemoryBackend, "memory-backend", "", "memory backend: engram, markdown, or none (default: engram)")
+	fs.StringVar(&opts.MemoryVault, "memory-vault", "", "markdown memory vault root")
+	fs.StringVar(&opts.MemoryNamespace, "memory-namespace", "", "markdown memory namespace relative to vault root")
+	fs.StringVar(&opts.MemoryProject, "memory-project", "", "markdown memory project slug")
 	fs.StringVar(&opts.SDDMode, "sdd-mode", "", "SDD orchestrator mode: single or multi (default: single)")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "preview plan without executing")
 

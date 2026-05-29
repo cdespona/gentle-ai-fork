@@ -2,6 +2,7 @@ package cli
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gentleman-programming/gentle-ai/internal/model"
@@ -15,6 +16,7 @@ func TestParseInstallFlagsSupportsCSVAndRepeated(t *testing.T) {
 		"--component", "engram,sdd",
 		"--component", "skills",
 		"--skill", "sdd-apply",
+		"--project-skills", "java-development,kotlin-development",
 		"--persona", "neutral",
 		"--preset", "minimal",
 		"--dry-run",
@@ -29,6 +31,10 @@ func TestParseInstallFlagsSupportsCSVAndRepeated(t *testing.T) {
 
 	if !reflect.DeepEqual(flags.Components, []string{"engram", "sdd", "skills"}) {
 		t.Fatalf("components = %v", flags.Components)
+	}
+
+	if !reflect.DeepEqual(flags.ProjectSkills, []string{"java-development", "kotlin-development"}) {
+		t.Fatalf("project skills = %v", flags.ProjectSkills)
 	}
 
 	if !flags.DryRun {
@@ -58,9 +64,10 @@ func TestNormalizeInstallFlagsDefaults(t *testing.T) {
 	}
 
 	want := model.Selection{
-		Agents:  []model.AgentID{model.AgentClaudeCode, model.AgentOpenCode, model.AgentKilocode, model.AgentGeminiCLI, model.AgentCodex, model.AgentCursor, model.AgentVSCodeCopilot, model.AgentAntigravity, model.AgentWindsurf, model.AgentKimi, model.AgentQwenCode, model.AgentKiroIDE, model.AgentOpenClaw, model.AgentPi},
-		Persona: model.PersonaGentleman,
-		Preset:  model.PresetFullGentleman,
+		Agents:        []model.AgentID{model.AgentClaudeCode, model.AgentOpenCode, model.AgentKilocode, model.AgentGeminiCLI, model.AgentCodex, model.AgentCursor, model.AgentVSCodeCopilot, model.AgentAntigravity, model.AgentWindsurf, model.AgentKimi, model.AgentQwenCode, model.AgentKiroIDE, model.AgentOpenClaw, model.AgentPi},
+		Persona:       model.PersonaGentleman,
+		Preset:        model.PresetFullGentleman,
+		MemoryBackend: model.MemoryBackendEngram,
 		Components: []model.ComponentID{
 			model.ComponentEngram,
 			model.ComponentSDD,
@@ -76,6 +83,123 @@ func TestNormalizeInstallFlagsDefaults(t *testing.T) {
 
 	if !reflect.DeepEqual(input.Selection, want) {
 		t.Fatalf("selection = %#v, want %#v", input.Selection, want)
+	}
+}
+
+func TestNormalizeInstallFlagsMarkdownMemoryReplacesEngram(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		MemoryBackend: "markdown",
+		MemoryVault:   "/tmp/test-vault",
+		Agents:        []string{string(model.AgentOpenCode), string(model.AgentCodex)},
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+
+	if input.Selection.MemoryBackend != model.MemoryBackendMarkdown {
+		t.Fatalf("MemoryBackend = %q, want markdown", input.Selection.MemoryBackend)
+	}
+	if input.Selection.MemoryNamespace != "machine/agent-memory" {
+		t.Fatalf("MemoryNamespace = %q, want machine/agent-memory", input.Selection.MemoryNamespace)
+	}
+	if hasComponent(input.Selection.Components, model.ComponentEngram) {
+		t.Fatalf("components include engram for markdown backend: %v", input.Selection.Components)
+	}
+	if !hasComponent(input.Selection.Components, model.ComponentMarkdownMemory) {
+		t.Fatalf("components missing markdown memory: %v", input.Selection.Components)
+	}
+}
+
+func TestNormalizeInstallFlagsLeanWorkflowDefaultsToMarkdownMemory(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		Components: []string{string(model.ComponentOpenCodeLeanWorkflow)},
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+	if input.Selection.MemoryBackend != model.MemoryBackendMarkdown {
+		t.Fatalf("MemoryBackend = %q, want markdown", input.Selection.MemoryBackend)
+	}
+	if !hasComponent(input.Selection.Components, model.ComponentOpenCodeLeanWorkflow) {
+		t.Fatalf("components = %v, want lean workflow", input.Selection.Components)
+	}
+}
+
+func TestNormalizeInstallFlagsLeanWorkflowRejectsNonMarkdownMemory(t *testing.T) {
+	_, err := NormalizeInstallFlags(InstallFlags{
+		Components:    []string{string(model.ComponentOpenCodeLeanWorkflow)},
+		MemoryBackend: string(model.MemoryBackendNone),
+	}, system.DetectionResult{})
+	if err == nil {
+		t.Fatal("NormalizeInstallFlags() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "requires --memory-backend markdown") {
+		t.Fatalf("error = %v, want markdown requirement", err)
+	}
+}
+
+func TestNormalizeInstallFlagsAcceptsLeanWorkflowOptionalSkills(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		Agents:     []string{string(model.AgentOpenCode)},
+		Components: []string{string(model.ComponentOpenCodeLeanWorkflow), string(model.ComponentSkills)},
+		Skills: []string{
+			string(model.SkillTDD),
+			string(model.SkillCaveman),
+		},
+		ProjectSkills: []string{
+			string(model.SkillCodeComments),
+			string(model.SkillHexagonalArch),
+			string(model.SkillJavaDevelopment),
+			string(model.SkillKotlinDevelopment),
+			string(model.SkillTacticalDDD),
+			string(model.SkillTestTypeClass),
+		},
+		MemoryBackend: string(model.MemoryBackendMarkdown),
+		MemoryProject: "event-catalog-sync",
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+
+	wantGlobal := []model.SkillID{
+		model.SkillTDD,
+		model.SkillCaveman,
+	}
+	if !reflect.DeepEqual(input.Selection.Skills, wantGlobal) {
+		t.Fatalf("skills = %#v, want %#v", input.Selection.Skills, wantGlobal)
+	}
+
+	wantProject := []model.SkillID{
+		model.SkillCodeComments,
+		model.SkillHexagonalArch,
+		model.SkillJavaDevelopment,
+		model.SkillKotlinDevelopment,
+		model.SkillTacticalDDD,
+		model.SkillTestTypeClass,
+	}
+	if !reflect.DeepEqual(input.Selection.ProjectSkills, wantProject) {
+		t.Fatalf("project skills = %#v, want %#v", input.Selection.ProjectSkills, wantProject)
+	}
+}
+
+func TestNormalizeInstallFlagsNoneMemoryRemovesPersistentMemory(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{MemoryBackend: "none"}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+	if hasComponent(input.Selection.Components, model.ComponentEngram) || hasComponent(input.Selection.Components, model.ComponentMarkdownMemory) {
+		t.Fatalf("memory backend none should remove persistent memory components: %v", input.Selection.Components)
+	}
+}
+
+func TestNormalizeInstallFlagsRejectsUnsafeMarkdownNamespace(t *testing.T) {
+	_, err := NormalizeInstallFlags(InstallFlags{
+		MemoryBackend:   "markdown",
+		MemoryVault:     "/tmp/test-vault",
+		MemoryNamespace: "human",
+	}, system.DetectionResult{})
+	if err == nil {
+		t.Fatal("NormalizeInstallFlags() error = nil, want unsafe namespace error")
 	}
 }
 

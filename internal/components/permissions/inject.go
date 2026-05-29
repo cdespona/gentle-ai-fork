@@ -34,16 +34,11 @@ var claudeCodeOverlayJSON = []byte(`{
 `)
 
 // openCodeOverlayJSON uses the OpenCode "permission" key with bash/read granularity.
+// Bash commands ask by default so OpenCode cannot run shell commands silently.
 var openCodeOverlayJSON = []byte(`{
   "permission": {
     "bash": {
-      "*": "allow",
-      "git commit *": "ask",
-      "git push *": "ask",
-      "git push": "ask",
-      "git push --force *": "ask",
-      "git rebase *": "ask",
-      "git reset --hard *": "ask"
+      "*": "ask"
     },
     "read": {
       "*": "allow",

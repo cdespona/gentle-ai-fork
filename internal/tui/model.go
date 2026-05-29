@@ -471,10 +471,11 @@ func NewModel(detection system.DetectionResult, version string) Model {
 	}
 
 	selection := model.Selection{
-		Agents:     agents,
-		Persona:    model.PersonaGentleman,
-		Preset:     model.PresetFullGentleman,
-		Components: components,
+		Agents:        agents,
+		Persona:       model.PersonaGentleman,
+		Preset:        model.PresetFullGentleman,
+		MemoryBackend: model.MemoryBackendEngram,
+		Components:    components,
 	}
 
 	return Model{

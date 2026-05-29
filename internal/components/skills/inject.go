@@ -48,6 +48,16 @@ func Inject(homeDir string, adapter agents.Adapter, skillIDs []model.SkillID) (I
 		return InjectionResult{Skipped: skillIDs}, nil
 	}
 
+	return InjectToDir(skillDir, skillIDs)
+}
+
+// InjectToDir writes embedded skill files into a concrete skills directory.
+// This is used for project-local skill roots such as .opencode/skills.
+func InjectToDir(skillDir string, skillIDs []model.SkillID) (InjectionResult, error) {
+	if skillDir == "" {
+		return InjectionResult{Skipped: skillIDs}, nil
+	}
+
 	paths := make([]string, 0, len(skillIDs))
 	skipped := make([]model.SkillID, 0)
 	changed := false
@@ -114,5 +124,9 @@ func SkillPathForAgent(homeDir string, adapter agents.Adapter, id model.SkillID)
 	if skillDir == "" {
 		return ""
 	}
+	return SkillPathInDir(skillDir, id)
+}
+
+func SkillPathInDir(skillDir string, id model.SkillID) string {
 	return filepath.Join(skillDir, string(id), "SKILL.md")
 }

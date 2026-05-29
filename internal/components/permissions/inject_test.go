@@ -68,6 +68,25 @@ func TestInjectOpenCodeIsIdempotent(t *testing.T) {
 	if !strings.Contains(text, `"read"`) {
 		t.Fatal("opencode.json permission missing read section")
 	}
+
+	var settings map[string]any
+	if err := json.Unmarshal(content, &settings); err != nil {
+		t.Fatalf("unmarshal opencode.json: %v", err)
+	}
+	permission, ok := settings["permission"].(map[string]any)
+	if !ok {
+		t.Fatalf("permission node missing or invalid: %#v", settings["permission"])
+	}
+	bash, ok := permission["bash"].(map[string]any)
+	if !ok {
+		t.Fatalf("bash permission missing or invalid: %#v", permission["bash"])
+	}
+	if got := bash["*"]; got != "ask" {
+		t.Fatalf("bash wildcard permission = %#v, want ask", got)
+	}
+	if len(bash) != 1 {
+		t.Fatalf("bash permissions = %#v, want only wildcard ask", bash)
+	}
 }
 
 func TestInjectAddsEnvToDenyList(t *testing.T) {

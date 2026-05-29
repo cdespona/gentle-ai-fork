@@ -89,9 +89,55 @@ Once your agents are configured, open your AI agent in a project and run these t
 
 These are **not required** for basic usage. The SDD orchestrator runs `/sdd-init` automatically if it detects no context. Startup hooks normally keep the skill registry fresh for agents that support hooks, including Pi through `gentle-pi`. If you start Pi with `pi -ns`, startup skill loading/hooks are skipped, so run the registry refresh manually when you need updated project rules.
 
+### OpenCode with Markdown memory
+
+For a local OpenCode install that uses Markdown memory instead of Engram:
+
+```bash
+gentle-ai install \
+  --agent opencode \
+  --component sdd,permissions \
+  --skill memory-recall,memory-capture,memory-consolidate,memory-handoff \
+  --memory-backend markdown \
+  --memory-project my-project
+```
+
+Preview first with `--dry-run` if you want to inspect the plan without changing files. The `skills` component is included only so the explicit memory skills can be copied; the `--skill` list prevents the broader default skill preset from being installed. Add `persona` only if you want Gentle-AI to own OpenCode's global behavior prompt, `context7` only if you explicitly want its MCP server wired into OpenCode, and `gga` only if you want the optional pre-commit/PR review helper.
+
+What changes:
+
+| Location | What happens |
+| -------- | ------------ |
+| `~/.config/opencode/` | Gentle-AI writes OpenCode config, SDD commands, skills, prompt files, and local TUI plugins. |
+| `~/.gentle-ai/` | Gentle-AI writes install state, backups, runtime assets, and plugin/model caches. |
+| Markdown memory vault | Memory files are created under `<vault>/machine/agent-memory/`, including `projects/<memory-project>/`. |
+| Your project repo | No files are written by the OpenCode install itself. Running `gentle-ai skill-registry refresh` inside a repo creates `.atl/skill-registry.md` and `.atl/.skill-registry.cache.json`. |
+
+Permission behavior:
+
+- Every OpenCode bash command asks for approval before running.
+- Reads are allowed by default, but `.env`, `.env.*`, `secrets/`, and `credentials.json` paths are denied.
+
+OpenCode plugin behavior:
+
+- SDD setup always writes local bundled plugins to `~/.config/opencode/plugins/background-agents.ts` and `~/.config/opencode/plugins/model-variants.ts`.
+- Optional community plugins, if selected in the TUI, are registered by package name in `~/.config/opencode/tui.json`; OpenCode installs or loads them when it starts.
+- The Gentle Logo TUI plugin is not installed by the command above; avoid the `opencode-gentle-logo` component if you do not want it.
+- Markdown memory does not install Engram. It injects the Markdown memory protocol into `~/.config/opencode/AGENTS.md` and creates the vault files.
+
 ---
 
 ## Install
+
+### From this checkout
+
+Use this when you want the local code in this repository, including unreleased changes, instead of the published distro:
+
+```bash
+go install ./cmd/gentle-ai
+```
+
+That installs the local `gentle-ai` binary into your Go binary directory, usually `$(go env GOPATH)/bin`. Make sure that directory is on `PATH`, then run `gentle-ai version`; local builds report a development version unless built with release ldflags.
 
 ### Recommended
 
@@ -159,9 +205,9 @@ After creating a profile, open OpenCode and press **Tab** to switch between `gen
 
 **Full guide**: [OpenCode SDD Profiles](docs/opencode-profiles.md)
 
-### Engram (Persistent Memory)
+### Persistent Memory
 
-Your AI agent automatically remembers decisions, bugs, and context across sessions. You don't need to do anything -- but when you do:
+Your AI agent automatically remembers decisions, bugs, and context across sessions. Engram remains the default backend:
 
 ```bash
 engram projects list          # See all projects with memory counts
@@ -169,6 +215,14 @@ engram projects consolidate   # Fix name drift ("my-app" vs "My-App")
 engram search "auth bug"      # Find a past decision from the terminal
 engram tui                    # Visual memory browser
 ```
+
+You can also choose plain Markdown memory for Codex and OpenCode:
+
+```bash
+gentle-ai install --agent opencode,codex --memory-backend markdown
+```
+
+Markdown memory is created under `machine/agent-memory` inside the configured vault and does not update the central wiki `machine/hot.md` or `machine/knowledge/index.md`.
 
 **Full reference**: [Engram Commands](docs/engram.md)
 

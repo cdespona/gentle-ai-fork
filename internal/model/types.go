@@ -33,16 +33,18 @@ const (
 type ComponentID string
 
 const (
-	ComponentEngram             ComponentID = "engram"
-	ComponentSDD                ComponentID = "sdd"
-	ComponentSkills             ComponentID = "skills"
-	ComponentContext7           ComponentID = "context7"
-	ComponentPersona            ComponentID = "persona"
-	ComponentPermission         ComponentID = "permissions"
-	ComponentGGA                ComponentID = "gga"
-	ComponentTheme              ComponentID = "theme"
-	ComponentClaudeTheme        ComponentID = "claude-theme"
-	ComponentOpenCodeGentleLogo ComponentID = "opencode-gentle-logo"
+	ComponentEngram               ComponentID = "engram"
+	ComponentMarkdownMemory       ComponentID = "markdown-memory"
+	ComponentSDD                  ComponentID = "sdd"
+	ComponentSkills               ComponentID = "skills"
+	ComponentContext7             ComponentID = "context7"
+	ComponentPersona              ComponentID = "persona"
+	ComponentPermission           ComponentID = "permissions"
+	ComponentGGA                  ComponentID = "gga"
+	ComponentTheme                ComponentID = "theme"
+	ComponentClaudeTheme          ComponentID = "claude-theme"
+	ComponentOpenCodeGentleLogo   ComponentID = "opencode-gentle-logo"
+	ComponentOpenCodeLeanWorkflow ComponentID = "opencode-lean-workflow"
 )
 
 type UninstallMode string
@@ -64,26 +66,38 @@ const (
 type SkillID string
 
 const (
-	SkillSDDInit         SkillID = "sdd-init"
-	SkillSDDApply        SkillID = "sdd-apply"
-	SkillSDDVerify       SkillID = "sdd-verify"
-	SkillSDDExplore      SkillID = "sdd-explore"
-	SkillSDDPropose      SkillID = "sdd-propose"
-	SkillSDDSpec         SkillID = "sdd-spec"
-	SkillSDDDesign       SkillID = "sdd-design"
-	SkillSDDTasks        SkillID = "sdd-tasks"
-	SkillSDDArchive      SkillID = "sdd-archive"
-	SkillSDDOnboard      SkillID = "sdd-onboard"
-	SkillGoTesting       SkillID = "go-testing"
-	SkillCreator         SkillID = "skill-creator"
-	SkillJudgmentDay     SkillID = "judgment-day"
-	SkillBranchPR        SkillID = "branch-pr"
-	SkillIssueCreation   SkillID = "issue-creation"
-	SkillSkillRegistry   SkillID = "skill-registry"
-	SkillChainedPR       SkillID = "chained-pr"
-	SkillCognitiveDoc    SkillID = "cognitive-doc-design"
-	SkillCommentWriter   SkillID = "comment-writer"
-	SkillWorkUnitCommits SkillID = "work-unit-commits"
+	SkillSDDInit           SkillID = "sdd-init"
+	SkillSDDApply          SkillID = "sdd-apply"
+	SkillSDDVerify         SkillID = "sdd-verify"
+	SkillSDDExplore        SkillID = "sdd-explore"
+	SkillSDDPropose        SkillID = "sdd-propose"
+	SkillSDDSpec           SkillID = "sdd-spec"
+	SkillSDDDesign         SkillID = "sdd-design"
+	SkillSDDTasks          SkillID = "sdd-tasks"
+	SkillSDDArchive        SkillID = "sdd-archive"
+	SkillSDDOnboard        SkillID = "sdd-onboard"
+	SkillGoTesting         SkillID = "go-testing"
+	SkillTDD               SkillID = "tdd"
+	SkillCaveman           SkillID = "caveman"
+	SkillCodeComments      SkillID = "code-comments"
+	SkillHexagonalArch     SkillID = "hexagonal-architecture"
+	SkillJavaDevelopment   SkillID = "java-development"
+	SkillKotlinDevelopment SkillID = "kotlin-development"
+	SkillTacticalDDD       SkillID = "tactical-ddd"
+	SkillTestTypeClass     SkillID = "test-type-classification"
+	SkillCreator           SkillID = "skill-creator"
+	SkillJudgmentDay       SkillID = "judgment-day"
+	SkillBranchPR          SkillID = "branch-pr"
+	SkillIssueCreation     SkillID = "issue-creation"
+	SkillSkillRegistry     SkillID = "skill-registry"
+	SkillChainedPR         SkillID = "chained-pr"
+	SkillCognitiveDoc      SkillID = "cognitive-doc-design"
+	SkillCommentWriter     SkillID = "comment-writer"
+	SkillWorkUnitCommits   SkillID = "work-unit-commits"
+	SkillMemoryRecall      SkillID = "memory-recall"
+	SkillMemoryCapture     SkillID = "memory-capture"
+	SkillMemoryConsolidate SkillID = "memory-consolidate"
+	SkillMemoryHandoff     SkillID = "memory-handoff"
 )
 
 type PersonaID string
@@ -144,6 +158,14 @@ type SDDModeID string
 const (
 	SDDModeSingle SDDModeID = "single"
 	SDDModeMulti  SDDModeID = "multi"
+)
+
+type MemoryBackendID string
+
+const (
+	MemoryBackendEngram   MemoryBackendID = "engram"
+	MemoryBackendMarkdown MemoryBackendID = "markdown"
+	MemoryBackendNone     MemoryBackendID = "none"
 )
 
 // SDDProfileStrategyID defines how sync handles OpenCode SDD profiles.

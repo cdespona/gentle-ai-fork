@@ -14,6 +14,8 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
 	"github.com/gentleman-programming/gentle-ai/internal/components/engram"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
+	"github.com/gentleman-programming/gentle-ai/internal/components/leanworkflow"
+	"github.com/gentleman-programming/gentle-ai/internal/components/markdownmemory"
 	"github.com/gentleman-programming/gentle-ai/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/internal/components/permissions"
 	"github.com/gentleman-programming/gentle-ai/internal/components/persona"
@@ -30,6 +32,10 @@ import (
 type SyncFlags struct {
 	Agents             []string
 	Skills             []string
+	MemoryBackend      string
+	MemoryVault        string
+	MemoryNamespace    string
+	MemoryProject      string
 	SDDMode            string
 	SDDProfileStrategy string
 	StrictTDD          bool
@@ -73,6 +79,10 @@ func ParseSyncFlags(args []string) (SyncFlags, error) {
 	registerListFlag(fs, "agents", &opts.Agents)
 	registerListFlag(fs, "skill", &opts.Skills)
 	registerListFlag(fs, "skills", &opts.Skills)
+	fs.StringVar(&opts.MemoryBackend, "memory-backend", "", "memory backend: engram, markdown, or none (default: engram)")
+	fs.StringVar(&opts.MemoryVault, "memory-vault", "", "markdown memory vault root")
+	fs.StringVar(&opts.MemoryNamespace, "memory-namespace", "", "markdown memory namespace relative to vault root")
+	fs.StringVar(&opts.MemoryProject, "memory-project", "", "markdown memory project slug")
 	fs.StringVar(&opts.SDDMode, "sdd-mode", "", "SDD orchestrator mode: single or multi (default: single)")
 	fs.StringVar(&opts.SDDProfileStrategy, "sdd-profile-strategy", "", "OpenCode SDD profile sync strategy: generated-multi or external-single-active (default: auto-detect)")
 	fs.BoolVar(&opts.StrictTDD, "strict-tdd", false, "enable strict TDD mode for SDD agents (RED → GREEN → REFACTOR)")
@@ -95,6 +105,20 @@ func ParseSyncFlags(args []string) (SyncFlags, error) {
 		return SyncFlags{}, err
 	}
 	opts.SDDProfileStrategy = string(strategy)
+	backend, err := normalizeMemoryBackend(opts.MemoryBackend)
+	if err != nil {
+		return SyncFlags{}, err
+	}
+	if strings.TrimSpace(opts.MemoryBackend) != "" {
+		opts.MemoryBackend = string(backend)
+	}
+	if _, _, _, err := normalizeMarkdownMemoryConfig(InstallFlags{
+		MemoryVault:     opts.MemoryVault,
+		MemoryNamespace: opts.MemoryNamespace,
+		MemoryProject:   opts.MemoryProject,
+	}, backend); err != nil {
+		return SyncFlags{}, err
+	}
 
 	// Parse --profile flags into model.Profile values.
 	if len(opts.rawProfiles) > 0 || len(opts.rawProfilePhases) > 0 {
@@ -264,7 +288,7 @@ func parseModelSpec(spec string) (model.ModelAssignment, error) {
 
 // BuildSyncSelection builds a model.Selection for the sync command.
 //
-// Default sync scope: SDD, Engram, Context7, GGA, Skills, Persona.
+// Default sync scope: SDD, selected memory backend, Context7, GGA, Skills, Persona.
 // Excluded by default: Permissions, Theme (no markers; managed via JSON
 // overlays where user customization cannot be safely diff-merged).
 // Permissions and Theme can be opted-in via flags.
@@ -277,7 +301,13 @@ func parseModelSpec(spec string) (model.ModelAssignment, error) {
 // This is the reusable managed-asset sync contract. A future `upgrade --sync`
 // flow can call this function to get the same managed-only selection semantics.
 func BuildSyncSelection(flags SyncFlags, agentIDs []model.AgentID) model.Selection {
-	// Order matters: Persona must run BEFORE SDD/Engram/MCP because those
+	memoryBackend, _ := normalizeMemoryBackend(flags.MemoryBackend)
+	memoryVault, memoryNamespace, memoryProject, _ := normalizeMarkdownMemoryConfig(InstallFlags{
+		MemoryVault:     flags.MemoryVault,
+		MemoryNamespace: flags.MemoryNamespace,
+		MemoryProject:   flags.MemoryProject,
+	}, memoryBackend)
+	// Order matters: Persona must run BEFORE SDD/memory/MCP because those
 	// components inject content with substrings (e.g. "## Personality",
 	// "Senior Architect") that overlap with persona's legacy-block fingerprints.
 	// Running persona last would cause its StripLegacyPersonaBlock pass to
@@ -285,11 +315,11 @@ func BuildSyncSelection(flags SyncFlags, agentIDs []model.AgentID) model.Selecti
 	components := []model.ComponentID{
 		model.ComponentPersona,
 		model.ComponentSDD,
-		model.ComponentEngram,
 		model.ComponentContext7,
 		model.ComponentGGA,
 		model.ComponentSkills,
 	}
+	components = componentsForMemoryBackend(components, memoryBackend)
 
 	if flags.IncludePermissions {
 		components = append(components, model.ComponentPermission)
@@ -308,6 +338,10 @@ func BuildSyncSelection(flags SyncFlags, agentIDs []model.AgentID) model.Selecti
 	return model.Selection{
 		Agents:             agentIDs,
 		Components:         components,
+		MemoryBackend:      memoryBackend,
+		MemoryVault:        memoryVault,
+		MemoryNamespace:    memoryNamespace,
+		MemoryProject:      memoryProject,
 		SDDMode:            sddMode,
 		SDDProfileStrategy: model.SDDProfileStrategyID(flags.SDDProfileStrategy),
 		StrictTDD:          flags.StrictTDD,
@@ -556,6 +590,18 @@ func (s componentSyncStep) Run() error {
 		}
 		return nil
 
+	case model.ComponentMarkdownMemory:
+		cfg := markdownMemoryConfig(s.selection)
+		for _, adapter := range adapters {
+			targetDir := componentInjectionDir(s.homeDir, s.workspaceDir, adapter)
+			res, err := markdownmemory.Inject(targetDir, adapter, cfg)
+			if err != nil {
+				return fmt.Errorf("sync markdown memory for %q: %w", adapter.Agent(), err)
+			}
+			s.countChanged(boolToInt(res.Changed))
+		}
+		return nil
+
 	case model.ComponentContext7:
 		for _, adapter := range adapters {
 			res, err := mcp.Inject(s.homeDir, adapter)
@@ -659,6 +705,18 @@ func (s componentSyncStep) Run() error {
 			res, err := permissions.Inject(s.homeDir, adapter)
 			if err != nil {
 				return fmt.Errorf("sync permissions for %q: %w", adapter.Agent(), err)
+			}
+			s.countChanged(boolToInt(res.Changed))
+		}
+		return nil
+
+	case model.ComponentOpenCodeLeanWorkflow:
+		for _, adapter := range adapters {
+			res, err := leanworkflow.Inject(s.homeDir, s.workspaceDir, adapter, leanworkflow.InjectOptions{
+				OpenCodeModelAssignments: s.selection.ModelAssignments,
+			})
+			if err != nil {
+				return fmt.Errorf("sync lean OpenCode workflow for %q: %w", adapter.Agent(), err)
 			}
 			s.countChanged(boolToInt(res.Changed))
 		}
@@ -795,7 +853,7 @@ func RunSync(args []string) (SyncResult, error) {
 	// Load persisted model assignments and persona from state when not provided
 	// via flags. Without this, every CLI sync falls back to defaults and would
 	// silently overwrite the user's model choices and persona selection.
-	if len(selection.ClaudeModelAssignments) == 0 || len(selection.ModelAssignments) == 0 || selection.Persona == "" {
+	if len(selection.ClaudeModelAssignments) == 0 || len(selection.ModelAssignments) == 0 || selection.Persona == "" || strings.TrimSpace(flags.MemoryBackend) == "" {
 		s, readErr := state.Read(homeDir)
 		if readErr == nil {
 			if len(selection.ClaudeModelAssignments) == 0 && len(s.ClaudeModelAssignments) > 0 {
@@ -819,6 +877,33 @@ func RunSync(args []string) (SyncResult, error) {
 			}
 			if selection.Persona == "" && s.Persona != "" {
 				selection.Persona = model.PersonaID(s.Persona)
+			}
+			if strings.TrimSpace(flags.MemoryBackend) == "" && s.MemoryBackend != "" {
+				backend, err := normalizeMemoryBackend(s.MemoryBackend)
+				if err != nil {
+					return SyncResult{}, err
+				}
+				selection.MemoryBackend = backend
+				selection.MemoryVault = s.MemoryVault
+				selection.MemoryNamespace = s.MemoryNamespace
+				selection.MemoryProject = s.MemoryProject
+				if backend == model.MemoryBackendMarkdown {
+					if selection.MemoryVault == "" || selection.MemoryNamespace == "" || selection.MemoryProject == "" {
+						return SyncResult{}, fmt.Errorf("state has markdown memory backend but incomplete markdown memory config")
+					}
+					vault, namespace, project, err := normalizeMarkdownMemoryConfig(InstallFlags{
+						MemoryVault:     selection.MemoryVault,
+						MemoryNamespace: selection.MemoryNamespace,
+						MemoryProject:   selection.MemoryProject,
+					}, backend)
+					if err != nil {
+						return SyncResult{}, err
+					}
+					selection.MemoryVault = vault
+					selection.MemoryNamespace = namespace
+					selection.MemoryProject = project
+				}
+				selection.Components = componentsForMemoryBackend(selection.Components, backend)
 			}
 		}
 	}

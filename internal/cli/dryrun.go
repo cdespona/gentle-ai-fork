@@ -18,8 +18,19 @@ func RenderDryRun(result InstallResult) string {
 	_, _ = fmt.Fprintf(b, "Unsupported agents: %s\n", joinAgentIDs(result.Resolved.UnsupportedAgents))
 	_, _ = fmt.Fprintf(b, "Persona: %s\n", result.Selection.Persona)
 	_, _ = fmt.Fprintf(b, "Preset: %s\n", result.Selection.Preset)
+	if result.Selection.MemoryBackend != "" {
+		_, _ = fmt.Fprintf(b, "Memory backend: %s\n", result.Selection.MemoryBackend)
+	}
+	if result.Selection.MemoryBackend == model.MemoryBackendMarkdown {
+		_, _ = fmt.Fprintf(b, "Memory vault: %s\n", result.Selection.MemoryVault)
+		_, _ = fmt.Fprintf(b, "Memory namespace: %s\n", result.Selection.MemoryNamespace)
+		_, _ = fmt.Fprintf(b, "Memory project: %s\n", result.Selection.MemoryProject)
+	}
 	if result.Selection.SDDMode != "" {
 		_, _ = fmt.Fprintf(b, "SDD mode: %s\n", result.Selection.SDDMode)
+	}
+	if len(result.Selection.ProjectSkills) > 0 {
+		_, _ = fmt.Fprintf(b, "Project skills: %s\n", joinSkillIDs(result.Selection.ProjectSkills))
 	}
 	_, _ = fmt.Fprintf(b, "Components order: %s\n", joinComponentIDs(result.Resolved.OrderedComponents))
 	_, _ = fmt.Fprintf(b, "Auto-added dependencies: %s\n", joinComponentIDs(result.Resolved.AddedDependencies))
@@ -48,6 +59,18 @@ func joinAgentIDs(values []model.AgentID) string {
 }
 
 func joinComponentIDs(values []model.ComponentID) string {
+	if len(values) == 0 {
+		return "none"
+	}
+
+	parts := make([]string, 0, len(values))
+	for _, value := range values {
+		parts = append(parts, string(value))
+	}
+	return strings.Join(parts, ",")
+}
+
+func joinSkillIDs(values []model.SkillID) string {
 	if len(values) == 0 {
 		return "none"
 	}

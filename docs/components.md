@@ -9,6 +9,7 @@
 | Component | ID | Description |
 |-----------|-----|-------------|
 | Engram | `engram` | Persistent cross-session memory via MCP — auto-detection of project name, full-text search, git sync, project consolidation. See [engram repo](https://github.com/Gentleman-Programming/engram) |
+| Markdown Memory | `markdown-memory` | Plain Markdown memory in an agent-owned vault namespace. Selected with `--memory-backend markdown`; currently injects protocol for OpenCode and Codex. |
 | SDD | `sdd` | Spec-Driven Development workflow (9 phases) — the agent handles SDD organically when the task warrants it, or when you ask; you don't need to learn the commands |
 | Skills | `skills` | Curated coding skill library |
 | Context7 | `context7` | MCP server for live framework/library documentation |
@@ -36,7 +37,7 @@ gga install
 
 ### Included Skills (installed by gentle-ai)
 
-20 skill files organized by category, embedded in the binary and injected into your agent's configuration:
+24 skill files organized by category, embedded in the binary and injected into your agent's configuration:
 
 #### SDD (Spec-Driven Development)
 
@@ -70,6 +71,17 @@ gga install
 
 These foundation skills are installed by default with both `full-gentleman` and `ecosystem-only` presets.
 
+#### Markdown Memory
+
+These skills are installed when `--memory-backend markdown` is selected.
+
+| Skill | ID | Description |
+|-------|-----|-------------|
+| Memory Recall | `memory-recall` | Read the Markdown memory hot cache, project index, and targeted project files |
+| Memory Capture | `memory-capture` | Stage concise candidate memories during active work |
+| Memory Consolidate | `memory-consolidate` | Promote staged observations into canonical memory files |
+| Memory Handoff | `memory-handoff` | Maintain task-scoped handoff files |
+
 ### Coding Skills (separate repository)
 
 For framework-specific skills (React 19, Angular, TypeScript, Tailwind 4, Zod 4, Playwright, etc.), see [Gentleman-Programming/Gentleman-Skills](https://github.com/Gentleman-Programming/Gentleman-Skills). These are maintained by the community and installed separately by cloning the repo and copying skills to your agent's skills directory.
@@ -84,3 +96,5 @@ For framework-specific skills (React 19, Angular, TypeScript, Tailwind 4, Zod 4,
 | Ecosystem Only | `ecosystem-only` | Core components (Engram + SDD + Skills + Context7 + GGA) + all skills + gentleman persona |
 | Minimal | `minimal` | Engram + SDD skills only |
 | Custom | `custom` | You choose components and skills manually while keeping any existing persona/settings unmanaged |
+
+Use `--memory-backend markdown` to replace Engram with Markdown Memory in presets. Use `--memory-backend none` to skip persistent memory injection entirely.

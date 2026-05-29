@@ -420,9 +420,9 @@ func TestEmbeddedAssetCount(t *testing.T) {
 		}
 	}
 
-	// We expect 21 skill directories (10 SDD + judgment-day + 5 foundation + 4 sustainable-review + _shared).
-	if skillDirs != 21 {
-		t.Fatalf("expected 21 skill directories, got %d", skillDirs)
+	// We expect 33 skill directories (10 SDD + judgment-day + 13 foundation/add-on + 4 sustainable-review + 4 memory + _shared).
+	if skillDirs != 33 {
+		t.Fatalf("expected 33 skill directories, got %d", skillDirs)
 	}
 
 	// Verify each skill directory has a SKILL.md.
@@ -523,8 +523,8 @@ func TestOpenCodeSDDOverlaySubagentsAreExplicitExecutors(t *testing.T) {
 
 // TestCommandsDoNotUseEchoNPwd guards against the nested-subshell pattern
 // `echo -n "$(pwd)"` (and the basename variant) that causes Claude Code v2.1.113+
-// to reject slash commands with "Unhandled node type: string". Use plain `!`pwd``
-// or `!`basename "$(pwd)"`` instead — both are accepted by old and new parsers.
+// to reject slash commands with "Unhandled node type: string". Use plain `!`pwd“
+// or `!`basename "$(pwd)"“ instead — both are accepted by old and new parsers.
 func TestCommandsDoNotUseEchoNPwd(t *testing.T) {
 	forbidden := `echo -n "$(pwd)"`
 

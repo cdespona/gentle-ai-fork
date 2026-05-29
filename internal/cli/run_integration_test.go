@@ -1799,17 +1799,13 @@ func TestRunInstallCustomPresetExplicitSkillsFlagPopulatesSelection(t *testing.T
 		t.Fatalf("expected branch-pr skill file %q: %v", branchPRPath, err)
 	}
 
-	// Note: the graph defines skills → sdd → engram as a hard dependency chain.
-	// Selecting --component skills auto-resolves sdd (and engram) as dependencies.
-	// The SDD component installs its own 10 SDD+orchestration skills during injection,
-	// regardless of the --skills flag. So sdd-init and other SDD skills ARE installed.
+	// Standalone skill installs must not auto-resolve the SDD workflow.
 	sddInitPath := filepath.Join(home, ".claude", "skills", "sdd-init", "SKILL.md")
-	if _, err := os.Stat(sddInitPath); err != nil {
-		t.Fatalf("sdd-init skill should be installed (sdd is auto-resolved as dep of skills): %v", err)
+	if _, err := os.Stat(sddInitPath); !os.IsNotExist(err) {
+		t.Fatalf("sdd-init skill should not be installed by standalone skills component: %v", err)
 	}
 
-	// The --skills flag controls what the skills COMPONENT adds on top of SDD skills.
-	// Total = 10 SDD skills + 2 explicit skills = 12 SKILL.md files.
+	// The --skills flag controls exactly what the skills component adds.
 	skillsDir := filepath.Join(home, ".claude", "skills")
 	entries, err := os.ReadDir(skillsDir)
 	if err != nil {
@@ -1826,9 +1822,8 @@ func TestRunInstallCustomPresetExplicitSkillsFlagPopulatesSelection(t *testing.T
 			skillCount++
 		}
 	}
-	// 11 SDD skills (from sdd dep, includes sdd-onboard) + 2 explicit skills (go-testing, branch-pr) + 1 _shared/SKILL.md = 14
-	if skillCount != 14 {
-		t.Fatalf("expected 14 skill files (11 SDD + 2 explicit + 1 _shared), got %d", skillCount)
+	if skillCount != 2 {
+		t.Fatalf("expected 2 explicit skill files, got %d", skillCount)
 	}
 }
 
@@ -1865,12 +1860,7 @@ func TestRunInstallCustomPresetSkillsNoFlagInstallsNothing(t *testing.T) {
 		t.Fatalf("verification ready = false, report = %#v", result.Verify)
 	}
 
-	// The graph defines skills → sdd → engram as hard dependencies.
-	// Selecting --component skills auto-resolves sdd (and engram).
-	// The SDD component ALWAYS installs its 10 SDD+orchestration skills during injection.
-	// Without --skills flag, selectedSkillIDs() returns nil for custom preset,
-	// so the skills COMPONENT is a no-op — but the sdd DEPENDENCY still runs and
-	// installs its 10 skills.
+	// Without --skills, the standalone skills component has nothing to install.
 	skillsDir := filepath.Join(home, ".claude", "skills")
 	// Count SKILL.md files (one per skill, excluding _shared and other non-skill dirs).
 	var skillCount int
@@ -1885,10 +1875,58 @@ func TestRunInstallCustomPresetSkillsNoFlagInstallsNothing(t *testing.T) {
 			}
 		}
 	}
-	// Expect exactly 12 SKILL.md files: 10 SDD phases + judgment-day (from SDD dependency) + 1 _shared/SKILL.md.
-	// The skills component itself adds 0 (no --skills flag, SkillsForPreset(custom) = nil).
-	if skillCount != 12 {
-		t.Fatalf("expected 12 SDD skill files installed by the sdd dependency, got %d", skillCount)
+	if skillCount != 0 {
+		t.Fatalf("expected no skill files without --skills, got %d", skillCount)
+	}
+}
+
+func TestRunInstallProjectSkillsWriteOnlyWorkspaceOpenCodeSkills(t *testing.T) {
+	home := t.TempDir()
+	workspace := t.TempDir()
+	t.Chdir(workspace)
+
+	restoreHome := osUserHomeDir
+	restoreCommand := runCommand
+	restoreLookPath := cmdLookPath
+	t.Cleanup(func() {
+		osUserHomeDir = restoreHome
+		runCommand = restoreCommand
+		cmdLookPath = restoreLookPath
+	})
+
+	osUserHomeDir = func() (string, error) { return home, nil }
+	runCommand = func(string, ...string) error { return nil }
+	cmdLookPath = func(name string) (string, error) {
+		return "/usr/local/bin/" + name, nil
+	}
+
+	result, err := RunInstall(
+		[]string{
+			"--agent", "opencode",
+			"--preset", "custom",
+			"--component", "skills",
+			"--memory-backend", "none",
+			"--project-skills", "java-development,hexagonal-architecture",
+		},
+		system.DetectionResult{},
+	)
+	if err != nil {
+		t.Fatalf("RunInstall() error = %v", err)
+	}
+	if !result.Verify.Ready {
+		t.Fatalf("verification ready = false, report = %#v", result.Verify)
+	}
+
+	for _, skill := range []string{"java-development", "hexagonal-architecture"} {
+		path := filepath.Join(workspace, ".opencode", "skills", skill, "SKILL.md")
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected project skill %q: %v", path, err)
+		}
+	}
+
+	globalJava := filepath.Join(home, ".config", "opencode", "skills", "java-development", "SKILL.md")
+	if _, err := os.Stat(globalJava); !os.IsNotExist(err) {
+		t.Fatalf("java-development should not be installed globally, stat err = %v", err)
 	}
 }
 
