@@ -14,6 +14,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
 	"github.com/gentleman-programming/gentle-ai/internal/components/engram"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
+	"github.com/gentleman-programming/gentle-ai/internal/components/layeredtdd"
 	"github.com/gentleman-programming/gentle-ai/internal/components/leanworkflow"
 	"github.com/gentleman-programming/gentle-ai/internal/components/markdownmemory"
 	"github.com/gentleman-programming/gentle-ai/internal/components/mcp"
@@ -717,6 +718,18 @@ func (s componentSyncStep) Run() error {
 			})
 			if err != nil {
 				return fmt.Errorf("sync lean OpenCode workflow for %q: %w", adapter.Agent(), err)
+			}
+			s.countChanged(boolToInt(res.Changed))
+		}
+		return nil
+
+	case model.ComponentOpenCodeLayeredTDD:
+		for _, adapter := range adapters {
+			res, err := layeredtdd.Inject(s.homeDir, s.workspaceDir, adapter, layeredtdd.InjectOptions{
+				OpenCodeModelAssignments: s.selection.ModelAssignments,
+			})
+			if err != nil {
+				return fmt.Errorf("sync layered TDD OpenCode workflow for %q: %w", adapter.Agent(), err)
 			}
 			s.countChanged(boolToInt(res.Changed))
 		}

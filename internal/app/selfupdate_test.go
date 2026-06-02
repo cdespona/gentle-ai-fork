@@ -123,6 +123,25 @@ func TestSelfUpdate_SkipWhenOptOut(t *testing.T) {
 	}
 }
 
+func TestSelfUpdate_SkipWhenOptOutIsTruthy(t *testing.T) {
+	for _, value := range []string{"true", "TRUE", "yes", "on", "anything"} {
+		t.Run(value, func(t *testing.T) {
+			setEnv(t, envNoSelfUpdate, value)
+			unsetEnv(t, envSelfUpdateDone)
+
+			stubs := swapSelfUpdateDeps(t, nil, upgrade.UpgradeReport{})
+
+			err := selfUpdate(context.Background(), "1.8.0", stubProfile(), io.Discard)
+			if err != nil {
+				t.Fatalf("selfUpdate returned error: %v", err)
+			}
+			if stubs.checkCalled != 0 {
+				t.Errorf("expected no check call when opt-out is %q, got %d", value, stubs.checkCalled)
+			}
+		})
+	}
+}
+
 func TestSelfUpdate_SkipWhenAlreadyDone(t *testing.T) {
 	setEnv(t, envSelfUpdateDone, "1")
 	unsetEnv(t, envNoSelfUpdate)

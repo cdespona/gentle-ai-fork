@@ -18,6 +18,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
 	"github.com/gentleman-programming/gentle-ai/internal/components/engram"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
+	"github.com/gentleman-programming/gentle-ai/internal/components/layeredtdd"
 	"github.com/gentleman-programming/gentle-ai/internal/components/leanworkflow"
 	"github.com/gentleman-programming/gentle-ai/internal/components/markdownmemory"
 	"github.com/gentleman-programming/gentle-ai/internal/components/mcp"
@@ -723,6 +724,15 @@ func (s componentApplyStep) Run() error {
 			}
 		}
 		return nil
+	case model.ComponentOpenCodeLayeredTDD:
+		for _, adapter := range adapters {
+			if _, err := layeredtdd.Inject(s.homeDir, s.workspaceDir, adapter, layeredtdd.InjectOptions{
+				OpenCodeModelAssignments: s.selection.ModelAssignments,
+			}); err != nil {
+				return fmt.Errorf("inject layered TDD OpenCode workflow for %q: %w", adapter.Agent(), err)
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("component %q is not supported in install runtime", s.component)
 	}
@@ -1094,6 +1104,8 @@ func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.S
 			)
 		case model.ComponentOpenCodeLeanWorkflow:
 			paths = append(paths, leanworkflow.Paths(homeDir, workspaceDir, adapter)...)
+		case model.ComponentOpenCodeLayeredTDD:
+			paths = append(paths, layeredtdd.Paths(homeDir, workspaceDir, adapter)...)
 		}
 	}
 

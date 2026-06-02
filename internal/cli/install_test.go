@@ -138,6 +138,34 @@ func TestNormalizeInstallFlagsLeanWorkflowRejectsNonMarkdownMemory(t *testing.T)
 	}
 }
 
+func TestNormalizeInstallFlagsLayeredTDDDefaultsToMarkdownMemory(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		Components: []string{string(model.ComponentOpenCodeLayeredTDD)},
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+	if input.Selection.MemoryBackend != model.MemoryBackendMarkdown {
+		t.Fatalf("MemoryBackend = %q, want markdown", input.Selection.MemoryBackend)
+	}
+	if !hasComponent(input.Selection.Components, model.ComponentOpenCodeLayeredTDD) {
+		t.Fatalf("components = %v, want layered TDD", input.Selection.Components)
+	}
+}
+
+func TestNormalizeInstallFlagsLayeredTDDRejectsNonMarkdownMemory(t *testing.T) {
+	_, err := NormalizeInstallFlags(InstallFlags{
+		Components:    []string{string(model.ComponentOpenCodeLayeredTDD)},
+		MemoryBackend: string(model.MemoryBackendNone),
+	}, system.DetectionResult{})
+	if err == nil {
+		t.Fatal("NormalizeInstallFlags() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "requires --memory-backend markdown") {
+		t.Fatalf("error = %v, want markdown requirement", err)
+	}
+}
+
 func TestNormalizeInstallFlagsAcceptsLeanWorkflowOptionalSkills(t *testing.T) {
 	input, err := NormalizeInstallFlags(InstallFlags{
 		Agents:     []string{string(model.AgentOpenCode)},

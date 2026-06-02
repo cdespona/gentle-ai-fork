@@ -91,7 +91,7 @@ func RunArgs(args []string, stdout io.Writer) error {
 
 	// Self-update: check for a newer gentle-ai release and apply it before
 	// CLI/TUI dispatch. Errors are non-fatal — logged and swallowed.
-	if !isExplicitUpdateFlow(args) {
+	if !isExplicitUpdateFlow(args) && !selfUpdateDisabled() {
 		if err := selfUpdateFn(context.Background(), Version, resolveProfile(), stdout); err != nil {
 			_, _ = fmt.Fprintf(stdout, "Warning: self-update failed: %v\n", err)
 		}

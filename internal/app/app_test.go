@@ -775,6 +775,53 @@ func TestRunArgs_UpgradeSkipsSelfUpdate(t *testing.T) {
 	}
 }
 
+func TestRunArgs_InstallHonorsNoSelfUpdateEnv(t *testing.T) {
+	setEnv(t, envNoSelfUpdate, "1")
+
+	origSelfUpdate := selfUpdateFn
+	origDetect := detectSystem
+	origEnsure := ensureCurrentOSSupported
+	t.Cleanup(func() {
+		selfUpdateFn = origSelfUpdate
+		detectSystem = origDetect
+		ensureCurrentOSSupported = origEnsure
+	})
+
+	ensureCurrentOSSupported = func() error { return nil }
+	detectSystem = func(context.Context) (system.DetectionResult, error) {
+		return system.DetectionResult{
+			System: system.SystemInfo{
+				Supported: true,
+				Profile:   system.PlatformProfile{OS: "darwin", PackageManager: "brew", Supported: true},
+			},
+		}, nil
+	}
+
+	selfUpdateCalled := 0
+	selfUpdateFn = func(context.Context, string, system.PlatformProfile, io.Writer) error {
+		selfUpdateCalled++
+		return nil
+	}
+
+	var buf bytes.Buffer
+	err := RunArgs([]string{
+		"install",
+		"--agent", "opencode",
+		"--component", "opencode-layered-tdd,skills",
+		"--skills", "tdd,caveman",
+		"--project-skills", "code-comments,test-type-classification",
+		"--memory-backend", "markdown",
+		"--memory-project", "event-catalog-sync",
+		"--dry-run",
+	}, &buf)
+	if err != nil {
+		t.Fatalf("RunArgs(install --dry-run) error = %v", err)
+	}
+	if selfUpdateCalled != 0 {
+		t.Fatalf("selfUpdate should be skipped when %s is set; got %d call(s)", envNoSelfUpdate, selfUpdateCalled)
+	}
+}
+
 func TestIsExplicitUpdateFlow(t *testing.T) {
 	tests := []struct {
 		name string

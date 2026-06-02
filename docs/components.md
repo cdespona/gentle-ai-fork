@@ -17,6 +17,10 @@
 | Permissions | `permissions` | Security-first defaults and guardrails |
 | GGA | `gga` | Gentleman Guardian Angel — AI provider switcher |
 | Theme | `theme` | Gentleman Kanagawa theme overlay |
+| Claude Gentleman Theme | `claude-theme` | Claude Code Gentleman custom theme |
+| OpenCode Gentle Logo | `opencode-gentle-logo` | OpenCode home logo TUI plugin with Braille rose |
+| OpenCode Lean Workflow | `opencode-lean-workflow` | Pilot requirements-first OpenCode workflow with local artifacts |
+| OpenCode Layered TDD | `opencode-layered-tdd` | Layer-gated OpenCode TDD workflow with slice selection and human approvals |
 
 ## GGA Behavior
 
