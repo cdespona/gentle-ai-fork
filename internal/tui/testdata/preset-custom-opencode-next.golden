@@ -24,6 +24,8 @@ Toggle components with enter or space.
     OpenCode home logo TUI plugin with Braille rose
   [ ] opencode-lean-workflow
     Pilot requirements-first OpenCode workflow with local artifacts
+  [ ] opencode-layered-tdd
+    Layer-gated OpenCode TDD workflow with slice selection and human approvals
 
   Continue
   Back

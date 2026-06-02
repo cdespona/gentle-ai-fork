@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -50,7 +51,7 @@ func selfUpdate(ctx context.Context, version string, profile system.PlatformProf
 	}
 
 	// Guard 2: user opt-out.
-	if os.Getenv(envNoSelfUpdate) == "1" {
+	if selfUpdateDisabled() {
 		return nil
 	}
 
@@ -132,4 +133,17 @@ func selfUpdate(ctx context.Context, version string, profile system.PlatformProf
 	_, _ = fmt.Fprintf(stdout, "Updated to v%s, restarting...\n", target.LatestVersion)
 
 	return reExec(executable, os.Args, os.Environ())
+}
+
+func selfUpdateDisabled() bool {
+	value, ok := os.LookupEnv(envNoSelfUpdate)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
 }

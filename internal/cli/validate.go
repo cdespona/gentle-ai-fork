@@ -55,6 +55,12 @@ func NormalizeInstallFlags(flags InstallFlags, detection system.DetectionResult)
 		}
 		memoryBackend = model.MemoryBackendMarkdown
 	}
+	if hasComponent(components, model.ComponentOpenCodeLayeredTDD) {
+		if strings.TrimSpace(flags.MemoryBackend) != "" && memoryBackend != model.MemoryBackendMarkdown {
+			return InstallInput{}, fmt.Errorf("component %q requires --memory-backend markdown", model.ComponentOpenCodeLayeredTDD)
+		}
+		memoryBackend = model.MemoryBackendMarkdown
+	}
 
 	selection.MemoryBackend = memoryBackend
 	memoryVault, memoryNamespace, memoryProject, err := normalizeMarkdownMemoryConfig(flags, memoryBackend)
