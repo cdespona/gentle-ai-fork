@@ -91,7 +91,7 @@ func RunArgs(args []string, stdout io.Writer) error {
 
 	// Self-update: check for a newer gentle-ai release and apply it before
 	// CLI/TUI dispatch. Errors are non-fatal — logged and swallowed.
-	if !isExplicitUpdateFlow(args) && !selfUpdateDisabled() {
+	if !isExplicitUpdateFlow(args) && !isWorkspaceLocalAssetFlow(args) && !selfUpdateDisabled() {
 		if err := selfUpdateFn(context.Background(), Version, resolveProfile(), stdout); err != nil {
 			_, _ = fmt.Fprintf(stdout, "Warning: self-update failed: %v\n", err)
 		}
@@ -614,4 +614,42 @@ func isExplicitUpdateFlow(args []string) bool {
 		return false
 	}
 	return args[0] == "update" || args[0] == "upgrade"
+}
+
+// isWorkspaceLocalAssetFlow reports whether the command only manages
+// repository-local assets that are embedded in the running gentle-ai binary.
+// These flows must not trigger self-update: users often run them from a local
+// dev binary specifically to validate new embedded assets before release.
+func isWorkspaceLocalAssetFlow(args []string) bool {
+	if len(args) == 0 {
+		return false
+	}
+	if args[0] != "install" && args[0] != "sync" {
+		return false
+	}
+
+	components := []string{}
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--component" || arg == "--components":
+			if i+1 < len(args) {
+				components = append(components, strings.Split(args[i+1], ",")...)
+				i++
+			}
+		case strings.HasPrefix(arg, "--component="):
+			components = append(components, strings.Split(strings.TrimPrefix(arg, "--component="), ",")...)
+		case strings.HasPrefix(arg, "--components="):
+			components = append(components, strings.Split(strings.TrimPrefix(arg, "--components="), ",")...)
+		}
+	}
+	if len(components) == 0 {
+		return false
+	}
+	for _, component := range components {
+		if strings.TrimSpace(component) != string(model.ComponentConductorLayeredTDD) {
+			return false
+		}
+	}
+	return true
 }

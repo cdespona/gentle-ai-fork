@@ -166,6 +166,60 @@ func TestNormalizeInstallFlagsLayeredTDDRejectsNonMarkdownMemory(t *testing.T) {
 	}
 }
 
+func TestNormalizeInstallFlagsConductorLayeredTDDIsWorkspaceLocalByDefault(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		Components: []string{string(model.ComponentConductorLayeredTDD)},
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+	if len(input.Selection.Agents) != 0 {
+		t.Fatalf("Agents = %v, want none for workspace-local component", input.Selection.Agents)
+	}
+	if input.Selection.MemoryBackend != model.MemoryBackendNone {
+		t.Fatalf("MemoryBackend = %q, want none for conductor-only install", input.Selection.MemoryBackend)
+	}
+	if !hasComponent(input.Selection.Components, model.ComponentConductorLayeredTDD) {
+		t.Fatalf("components = %v, want conductor layered TDD", input.Selection.Components)
+	}
+}
+
+func TestNormalizeInstallFlagsConductorLayeredTDDMarkdownMemory(t *testing.T) {
+	input, err := NormalizeInstallFlags(InstallFlags{
+		Components:    []string{string(model.ComponentConductorLayeredTDD)},
+		MemoryBackend: string(model.MemoryBackendMarkdown),
+		MemoryProject: "event-catalog-sync",
+	}, system.DetectionResult{})
+	if err != nil {
+		t.Fatalf("NormalizeInstallFlags() error = %v", err)
+	}
+	if input.Selection.MemoryBackend != model.MemoryBackendMarkdown {
+		t.Fatalf("MemoryBackend = %q, want markdown", input.Selection.MemoryBackend)
+	}
+	if input.Selection.MemoryProject != "event-catalog-sync" {
+		t.Fatalf("MemoryProject = %q, want event-catalog-sync", input.Selection.MemoryProject)
+	}
+	if !hasComponent(input.Selection.Components, model.ComponentMarkdownMemory) {
+		t.Fatalf("components = %v, want markdown memory", input.Selection.Components)
+	}
+	if !hasComponent(input.Selection.Components, model.ComponentConductorLayeredTDD) {
+		t.Fatalf("components = %v, want conductor layered TDD", input.Selection.Components)
+	}
+}
+
+func TestNormalizeInstallFlagsConductorLayeredTDDRejectsEngram(t *testing.T) {
+	_, err := NormalizeInstallFlags(InstallFlags{
+		Components:    []string{string(model.ComponentConductorLayeredTDD)},
+		MemoryBackend: string(model.MemoryBackendEngram),
+	}, system.DetectionResult{})
+	if err == nil {
+		t.Fatal("NormalizeInstallFlags() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "supports only --memory-backend markdown or none") {
+		t.Fatalf("error = %v, want conductor markdown/none restriction", err)
+	}
+}
+
 func TestNormalizeInstallFlagsAcceptsLeanWorkflowOptionalSkills(t *testing.T) {
 	input, err := NormalizeInstallFlags(InstallFlags{
 		Agents:     []string{string(model.AgentOpenCode)},

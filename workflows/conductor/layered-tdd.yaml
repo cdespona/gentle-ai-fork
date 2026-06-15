@@ -1,0 +1,499 @@
+# Layered TDD workflow for Microsoft Conductor.
+#
+# Run:
+#   conductor run workflows/conductor/layered-tdd.yaml \
+#     --workspace-instructions \
+#     --web \
+#     --input request="Describe the code-changing task"
+#
+# This workflow assumes the Copilot provider and local repository tools are
+# available through Conductor/Copilot CLI.
+workflow:
+  name: layered-tdd
+  description: Requirements-first, layer-gated TDD workflow with human approvals.
+  version: "0.1.0"
+  entry_point: preflight_tests
+  runtime:
+    provider: copilot
+    default_model: gpt-5.2
+    default_reasoning_effort: medium
+  context:
+    mode: accumulate
+  instructions:
+    - "This workflow is self-contained. Use the installed workflow prompts and any repo-local Conductor skills under `.github/skills/conductor-*/`; do not require Gentle AI documentation files to exist in the target repository."
+    - "Before code-changing agent work, check whether a relevant `.github/skills/conductor-<skill>/SKILL.md` exists and follow it when applicable."
+    - "If the Copilot CLI caveman skill is available, use caveman for planning notes, checkpoints, summaries, and human gate text. Keep artifact schemas, commands, paths, errors, and verification results exact and readable."
+  limits:
+    max_iterations: 80
+  input:
+    request:
+      type: string
+      required: true
+      description: The code-changing request to run through layered TDD.
+    task_slug:
+      type: string
+      required: false
+      description: Optional folder name under .github/plans/.
+    test_command:
+      type: string
+      required: false
+      default: make test
+      description: Command run before analysis and after implementation.
+    lint_command:
+      type: string
+      required: false
+      default: make lint
+      description: Command run before analysis and after implementation for lint/static checks.
+    security_command:
+      type: string
+      required: false
+      default: make audit
+      description: Command run before analysis and after implementation for dependency/CVE checks.
+    resume_path:
+      type: string
+      required: false
+      description: Optional existing .github/plans/<slug> folder to resume.
+    memory_vault:
+      type: string
+      required: false
+      description: Absolute path to the Markdown memory vault root. Required for memory capture.
+    memory_namespace:
+      type: string
+      required: false
+      default: machine/agent-memory
+      description: Markdown memory namespace under the vault root.
+    memory_project:
+      type: string
+      required: false
+      description: Markdown memory project slug. Required for memory capture.
+
+agents:
+  - name: preflight_tests
+    type: script
+    description: Run the test suite before spending model time on analysis.
+    command: sh
+    args:
+      - -lc
+      - "{{ workflow.input.test_command }}"
+    timeout: 600
+    routes:
+      - to: preflight_lint
+        when: "{{ output.exit_code == 0 }}"
+      - to: preflight_failure_gate
+
+  - name: preflight_lint
+    type: script
+    description: Run lint/static checks before analysis.
+    command: sh
+    args:
+      - -lc
+      - "{{ workflow.input.lint_command }}"
+    timeout: 600
+    routes:
+      - to: preflight_security
+        when: "{{ output.exit_code == 0 }}"
+      - to: preflight_failure_gate
+
+  - name: preflight_security
+    type: script
+    description: Run dependency/CVE checks before analysis.
+    command: sh
+    args:
+      - -lc
+      - "{{ workflow.input.security_command }}"
+    timeout: 600
+    routes:
+      - to: requirements_griller
+        when: "{{ output.exit_code == 0 }}"
+      - to: preflight_failure_gate
+
+  - name: preflight_failure_gate
+    type: human_gate
+    prompt: |
+      A preflight command failed before requirements analysis. Fix the existing
+      regression/check failure, override the Make target, or stop the workflow.
+    options:
+      - label: I fixed the failing preflight command; rerun preflight.
+        value: retry
+        route: preflight_tests
+      - label: Continue anyway and record that preflight was waived.
+        value: continue_with_waiver
+        route: requirements_griller
+      - label: Stop before requirements analysis.
+        value: stop
+        route: stopped
+
+  - name: requirements_griller
+    description: Capture requirements, blockers, assumptions, and slice split.
+    model: gpt-5.2
+    reasoning:
+      effort: high
+    prompt: !file prompts/requirements-griller.md
+    output:
+      artifact_path:
+        type: string
+        description: Path to the requirements or slice-selection artifact.
+      task_slug:
+        type: string
+        description: Current or recommended task slug.
+      multiple_slices:
+        type: boolean
+        description: True when the request contains multiple valuable slices.
+      blocker_count:
+        type: number
+        description: Number of unresolved blocker questions.
+      summary:
+        type: string
+        description: Short human-readable summary of what was produced.
+    routes:
+      - to: slice_selection_gate
+        when: "{{ output.multiple_slices }}"
+      - to: requirements_gate
+
+  - name: slice_selection_gate
+    type: human_gate
+    prompt: |
+      Review the generated `slice-selection.md`, then select exactly one slice.
+      The selected slice should start a fresh slice-specific run.
+    options:
+      - label: I selected one slice and want a fresh slice-specific run.
+        value: selected
+        route: slice_run_starter
+      - label: Revise the slice split before continuing.
+        value: revise
+        route: requirements_griller
+      - label: Stop this discovery run.
+        value: stop
+        route: stopped
+
+  - name: slice_run_starter
+    description: Create the slice-specific requirements artifact.
+    model: gpt-5.2
+    prompt: !file prompts/slice-run-starter.md
+    output:
+      artifact_path:
+        type: string
+        description: Path to the slice-specific 00-requirements.md artifact.
+      slice_slug:
+        type: string
+        description: Slug for the selected slice.
+      blockers_remaining:
+        type: boolean
+        description: True if blocker questions still need human answers.
+      summary:
+        type: string
+        description: Short summary of the selected slice.
+    routes:
+      - to: requirements_gate
+
+  - name: requirements_gate
+    type: human_gate
+    prompt: |
+      Review `00-requirements.md`. Confirm the selected slice goal, blockers,
+      non-blocker assumptions, and explicitly out-of-scope work. If you edited
+      `00-requirements.md` or added feedback there, choose revise so the
+      requirements griller can read it and update the artifact before mapping.
+    options:
+      - label: Requirements are confirmed for one selected slice.
+        value: approve
+        route: layer_mapper
+      - label: I edited or commented on requirements; rerun the griller.
+        value: revise
+        route: requirements_griller
+      - label: Stop before layer mapping.
+        value: stop
+        route: stopped
+
+  - name: layer_mapper
+    description: Map real repository boundaries and skeleton layer todos.
+    model: gpt-5.2
+    reasoning:
+      effort: high
+    prompt: !file prompts/layer-mapper.md
+    output:
+      artifact_path:
+        type: string
+        description: Path to 01-layer-map.md.
+      layer_count:
+        type: number
+        description: Number of layers in the selected slice.
+      recommended_next_layer:
+        type: string
+        description: Recommended next layer identifier or todo filename.
+      summary:
+        type: string
+        description: Short layer map summary.
+    routes:
+      - to: layer_selection_gate
+
+  - name: layer_selection_gate
+    type: human_gate
+    prompt: |
+      Review `01-layer-map.md`, then choose the next layer to detail. The human
+      selection should be written into the layer map or stated in the gate reply.
+    options:
+      - label: I selected the next layer to run.
+        value: selected
+        route: layer_todo_generator
+      - label: Revise the layer map before selecting a layer.
+        value: revise_map
+        route: layer_mapper
+      - label: Stop this slice.
+        value: stop
+        route: stopped
+
+  - name: layer_todo_generator
+    description: Detail the selected layer todo with Gherkin and TDD gate state.
+    model: gpt-5.2
+    reasoning:
+      effort: high
+    prompt: !file prompts/layer-todo-generator.md
+    output:
+      artifact_path:
+        type: string
+        description: Path to the selected layer todo.
+      selected_layer:
+        type: string
+        description: Selected layer identifier.
+      test_ownership:
+        type: string
+        description: human-written, agent-written-after-approval, or waived.
+      red_gate_state:
+        type: string
+        description: observed-red, not-run-human-approved, already-passing-human-approved, waived, or blocked.
+      ready_for_implementation:
+        type: boolean
+        description: True only when the layer has an allowed red-test gate state.
+      summary:
+        type: string
+        description: Short summary of the layer todo.
+    routes:
+      - to: layer_todo_gate
+
+  - name: layer_todo_gate
+    type: human_gate
+    prompt: |
+      Review the selected layer todo. Approve Gherkin, test ownership, and the
+      red-test gate state before production implementation.
+    options:
+      - label: The layer todo and red-test gate are approved.
+        value: approve
+        route: implementor
+      - label: Revise the layer todo or gate state.
+        value: revise
+        route: layer_todo_generator
+      - label: Go back to layer selection.
+        value: select_other_layer
+        route: layer_selection_gate
+      - label: Stop this slice.
+        value: stop
+        route: stopped
+
+  - name: implementor
+    description: Implement only inside the approved layer boundary.
+    model: gpt-5.2
+    prompt: !file prompts/implementor.md
+    output:
+      selected_layer:
+        type: string
+        description: Layer implemented.
+      files_modified:
+        type: array
+        description: Files created or changed.
+      internal_tests_added:
+        type: array
+        description: Internal tests added inside the approved boundary.
+      checkpoint_required:
+        type: boolean
+        description: True when new top-level behavior or contradiction was found.
+      checkpoint_summary:
+        type: string
+        description: Checkpoint details if human routing is required.
+      summary:
+        type: string
+        description: Implementation summary.
+    routes:
+      - to: checkpoint_gate
+        when: "{{ output.checkpoint_required }}"
+      - to: verification_tests
+
+  - name: checkpoint_gate
+    type: human_gate
+    prompt: |
+      The implementor found new top-level behavior or a contradiction. Choose how
+      to route the checkpoint before any more production work.
+    options:
+      - label: Revise the current layer todo.
+        value: revise_layer_todo
+        route: layer_todo_generator
+      - label: Return to layer selection.
+        value: select_other_layer
+        route: layer_selection_gate
+      - label: Proceed because this is not actually new top-level behavior.
+        value: proceed
+        route: verification_tests
+      - label: Stop this slice.
+        value: stop
+        route: stopped
+
+  - name: verification_tests
+    type: script
+    description: Run the configured test command after implementation.
+    command: sh
+    args:
+      - -lc
+      - "{{ workflow.input.test_command }}"
+    timeout: 600
+    routes:
+      - to: verification_lint
+
+  - name: verification_lint
+    type: script
+    description: Run lint/static checks after implementation.
+    command: sh
+    args:
+      - -lc
+      - "{{ workflow.input.lint_command }}"
+    timeout: 600
+    routes:
+      - to: verification_security
+
+  - name: verification_security
+    type: script
+    description: Run dependency/CVE checks after implementation.
+    command: sh
+    args:
+      - -lc
+      - "{{ workflow.input.security_command }}"
+    timeout: 600
+    routes:
+      - to: layer_reviewer
+
+  - name: layer_reviewer
+    description: Review one completed layer and record risks or gaps.
+    model: gpt-5.2
+    reasoning:
+      effort: high
+    prompt: !file prompts/layer-reviewer.md
+    output:
+      artifact_path:
+        type: string
+        description: Path updated by the layer review.
+      approved_recommendation:
+        type: boolean
+        description: Whether the reviewer recommends human approval.
+      more_layers_remaining:
+        type: boolean
+        description: Whether unfinished layers remain.
+      issues:
+        type: array
+        description: Specific issues, risks, or verification gaps.
+      summary:
+        type: string
+        description: Layer review summary.
+    routes:
+      - to: layer_approval_gate
+
+  - name: layer_approval_gate
+    type: human_gate
+    prompt: |
+      Review the layer result and the reviewer notes. Approve the layer, request
+      a focused fix, select another layer, or finish the slice.
+    options:
+      - label: Approve this layer and choose another layer.
+        value: approve_more_layers
+        route: layer_selection_gate
+      - label: Approve this layer and run final slice review.
+        value: approve_final_review
+        route: final_reviewer
+      - label: Send the layer back to the implementor for focused fixes.
+        value: request_fixes
+        route: implementor
+      - label: Stop this slice.
+        value: stop
+        route: stopped
+
+  - name: final_reviewer
+    description: Review the whole selected slice and propose memory candidates.
+    model: gpt-5.2
+    reasoning:
+      effort: high
+    prompt: !file prompts/final-reviewer.md
+    output:
+      artifact_path:
+        type: string
+        description: Path to 99-final-review.md.
+      memory_candidates:
+        type: array
+        description: Proposed memory candidates.
+      residual_risks:
+        type: array
+        description: Residual risks or verification gaps.
+      ready_to_finish:
+        type: boolean
+        description: Whether the slice is ready to finish.
+      summary:
+        type: string
+        description: Final review summary.
+    routes:
+      - to: memory_gate
+
+  - name: memory_gate
+    type: human_gate
+    prompt: |
+      Review `99-final-review.md`. Approve only the memory candidates worth
+      capturing with the repository's existing memory workflow.
+    options:
+      - label: Capture approved memory candidates separately.
+        value: capture
+        route: memory_capturer
+      - label: Finish without memory capture.
+        value: skip
+        route: done
+      - label: Revise the final review first.
+        value: revise_review
+        route: final_reviewer
+
+  - name: memory_capturer
+    description: Persist human-approved memory candidates from the final review.
+    model: gpt-5.2
+    reasoning:
+      effort: low
+    prompt: !file prompts/memory-capturer.md
+    output:
+      artifact_path:
+        type: string
+        description: Path to the final review artifact that was processed.
+      captured_count:
+        type: number
+        description: Number of memory candidates captured or staged.
+      capture_backend:
+        type: string
+        description: Memory backend used, either markdown or unavailable.
+      capture_artifacts:
+        type: array
+        description: Observation IDs, topic keys, or markdown files written.
+      summary:
+        type: string
+        description: Short memory capture summary.
+    routes:
+      - to: done
+
+  - name: stopped
+    type: terminate
+    status: success
+    reason: Human stopped the layered TDD workflow.
+    output_template:
+      status: stopped
+      reason: Human stopped the layered TDD workflow.
+
+  - name: done
+    type: terminate
+    status: success
+    reason: Layered TDD slice complete.
+    output_template:
+      status: complete
+      requirements_artifact: "{{ requirements_griller.output.artifact_path }}"
+      layer_map: "{{ layer_mapper.output.artifact_path }}"
+      last_layer_todo: "{{ layer_todo_generator.output.artifact_path }}"
+      final_review: "{{ final_reviewer.output.artifact_path }}"

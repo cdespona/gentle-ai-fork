@@ -26,6 +26,8 @@ Toggle components with enter or space.
     Pilot requirements-first OpenCode workflow with local artifacts
   [ ] opencode-layered-tdd
     Layer-gated OpenCode TDD workflow with slice selection and human approvals
+  [ ] conductor-layered-tdd
+    Repo-local Microsoft Conductor workflow with prompts, project skills, and human gates
 
   Continue
   Back

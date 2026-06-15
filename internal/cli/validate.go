@@ -61,6 +61,19 @@ func NormalizeInstallFlags(flags InstallFlags, detection system.DetectionResult)
 		}
 		memoryBackend = model.MemoryBackendMarkdown
 	}
+	if hasComponent(components, model.ComponentConductorLayeredTDD) {
+		switch {
+		case strings.TrimSpace(flags.MemoryBackend) == "":
+			if onlyWorkspaceLocalComponents(components) {
+				memoryBackend = model.MemoryBackendNone
+			}
+		case memoryBackend == model.MemoryBackendEngram:
+			return InstallInput{}, fmt.Errorf("component %q supports only --memory-backend markdown or none", model.ComponentConductorLayeredTDD)
+		}
+	}
+	if len(flags.Agents) == 0 && onlyWorkspaceLocalComponents(components) {
+		selection.Agents = nil
+	}
 
 	selection.MemoryBackend = memoryBackend
 	memoryVault, memoryNamespace, memoryProject, err := normalizeMarkdownMemoryConfig(flags, memoryBackend)
@@ -140,6 +153,18 @@ func normalizeComponents(values []string, preset model.PresetID) ([]model.Compon
 	}
 
 	return unique(components), nil
+}
+
+func onlyWorkspaceLocalComponents(components []model.ComponentID) bool {
+	if len(components) == 0 {
+		return false
+	}
+	for _, component := range components {
+		if component != model.ComponentConductorLayeredTDD {
+			return false
+		}
+	}
+	return true
 }
 
 func normalizeSkills(values []string) ([]model.SkillID, error) {
@@ -249,6 +274,7 @@ func componentsForMemoryBackend(components []model.ComponentID, backend model.Me
 	hasSDD := false
 	hasMarkdown := false
 	hasEngram := false
+	hasConductorLayeredTDD := false
 	for _, component := range components {
 		if component == model.ComponentSDD {
 			hasSDD = true
@@ -259,6 +285,9 @@ func componentsForMemoryBackend(components []model.ComponentID, backend model.Me
 		if component == model.ComponentMarkdownMemory {
 			hasMarkdown = true
 		}
+		if component == model.ComponentConductorLayeredTDD {
+			hasConductorLayeredTDD = true
+		}
 		if component == model.ComponentEngram || component == model.ComponentMarkdownMemory {
 			continue
 		}
@@ -267,7 +296,7 @@ func componentsForMemoryBackend(components []model.ComponentID, backend model.Me
 
 	switch backend {
 	case model.MemoryBackendMarkdown:
-		if hasSDD || hasEngram || hasMarkdown {
+		if hasSDD || hasEngram || hasMarkdown || hasConductorLayeredTDD {
 			filtered = append([]model.ComponentID{model.ComponentMarkdownMemory}, filtered...)
 		}
 	case model.MemoryBackendNone:
