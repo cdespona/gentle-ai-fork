@@ -242,6 +242,7 @@ Markdown memory is created under `machine/agent-memory` inside the configured va
 | [Usage](docs/usage.md)                             | Persona modes, interactive TUI, CLI flags, and dependency management                    |
 | [Backup & Rollback](docs/rollback.md)              | Backup retention, compression, dedup, pinning, and restore                              |
 | [Kiro IDE](docs/kiro.md)                           | Kiro-specific setup, config paths, native subagents, and SDD behavior                   |
+| [Conductor Layered TDD](docs/conductor-layered-tdd.md) | Run layered TDD through Microsoft Conductor and GitHub Copilot CLI with human gates     |
 | [Platforms](docs/platforms.md)                     | Supported platforms, Windows notes, security verification, config paths                 |
 | [Architecture & Development](docs/architecture.md) | Codebase layout, testing, and relationship to Gentleman.Dots                            |
 

@@ -48,6 +48,7 @@ func MVPGraph() Graph {
 		model.ComponentOpenCodeGentleLogo:   nil,
 		model.ComponentOpenCodeLeanWorkflow: {model.ComponentMarkdownMemory, model.ComponentPermission},
 		model.ComponentOpenCodeLayeredTDD:   {model.ComponentMarkdownMemory, model.ComponentPermission},
+		model.ComponentConductorLayeredTDD:  nil,
 	})
 }
 

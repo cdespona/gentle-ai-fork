@@ -189,7 +189,7 @@ gentle-ai -v
 | Flag                     | Description                                                                                          |
 | ------------------------ | ---------------------------------------------------------------------------------------------------- |
 | `--agent`, `--agents`    | Agents to sync (defaults to all installed agents)                                                    |
-| `--component`            | Sync a specific component only: `sdd`, `engram`, `context7`, `skills`, `gga`, `permissions`, `theme` |
+| `--component`            | Sync a specific component only, such as `sdd`, `engram`, `context7`, `skills`, `gga`, `permissions`, `theme`, or `conductor-layered-tdd` |
 | `--memory-backend`       | Memory backend for sync: `engram`, `markdown`, or `none`                                             |
 | `--memory-vault`         | Absolute vault root for Markdown memory                                                             |
 | `--memory-namespace`     | Markdown memory namespace under the vault, default `machine/agent-memory`                           |

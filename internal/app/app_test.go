@@ -822,6 +822,48 @@ func TestRunArgs_InstallHonorsNoSelfUpdateEnv(t *testing.T) {
 	}
 }
 
+func TestRunArgs_ConductorLayeredTDDInstallSkipsSelfUpdate(t *testing.T) {
+	unsetEnv(t, envNoSelfUpdate)
+
+	origSelfUpdate := selfUpdateFn
+	origDetect := detectSystem
+	origEnsure := ensureCurrentOSSupported
+	t.Cleanup(func() {
+		selfUpdateFn = origSelfUpdate
+		detectSystem = origDetect
+		ensureCurrentOSSupported = origEnsure
+	})
+
+	ensureCurrentOSSupported = func() error { return nil }
+	detectSystem = func(context.Context) (system.DetectionResult, error) {
+		return system.DetectionResult{
+			System: system.SystemInfo{
+				Supported: true,
+				Profile:   system.PlatformProfile{OS: "darwin", PackageManager: "brew", Supported: true},
+			},
+		}, nil
+	}
+
+	selfUpdateCalled := 0
+	selfUpdateFn = func(context.Context, string, system.PlatformProfile, io.Writer) error {
+		selfUpdateCalled++
+		return nil
+	}
+
+	var buf bytes.Buffer
+	err := RunArgs([]string{
+		"install",
+		"--component", string(model.ComponentConductorLayeredTDD),
+		"--dry-run",
+	}, &buf)
+	if err != nil {
+		t.Fatalf("RunArgs(conductor layered TDD install --dry-run) error = %v", err)
+	}
+	if selfUpdateCalled != 0 {
+		t.Fatalf("selfUpdate should be skipped for workspace-local conductor install; got %d call(s)", selfUpdateCalled)
+	}
+}
+
 func TestIsExplicitUpdateFlow(t *testing.T) {
 	tests := []struct {
 		name string
@@ -842,6 +884,31 @@ func TestIsExplicitUpdateFlow(t *testing.T) {
 			got := isExplicitUpdateFlow(tt.args)
 			if got != tt.want {
 				t.Fatalf("isExplicitUpdateFlow(%v) = %v, want %v", tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsWorkspaceLocalAssetFlow(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{name: "empty args", args: nil, want: false},
+		{name: "install conductor component split flag", args: []string{"install", "--component", "conductor-layered-tdd"}, want: true},
+		{name: "install conductor component equals flag", args: []string{"install", "--component=conductor-layered-tdd"}, want: true},
+		{name: "sync conductor component plural equals flag", args: []string{"sync", "--components=conductor-layered-tdd"}, want: true},
+		{name: "mixed components are not workspace-only", args: []string{"install", "--component", "conductor-layered-tdd,skills"}, want: false},
+		{name: "opencode layered TDD is not workspace-only", args: []string{"install", "--component", "opencode-layered-tdd"}, want: false},
+		{name: "upgrade is not workspace-only", args: []string{"upgrade", "--component", "conductor-layered-tdd"}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isWorkspaceLocalAssetFlow(tt.args)
+			if got != tt.want {
+				t.Fatalf("isWorkspaceLocalAssetFlow(%v) = %v, want %v", tt.args, got, tt.want)
 			}
 		})
 	}

@@ -46,6 +46,7 @@ const (
 	ComponentOpenCodeGentleLogo   ComponentID = "opencode-gentle-logo"
 	ComponentOpenCodeLeanWorkflow ComponentID = "opencode-lean-workflow"
 	ComponentOpenCodeLayeredTDD   ComponentID = "opencode-layered-tdd"
+	ComponentConductorLayeredTDD  ComponentID = "conductor-layered-tdd"
 )
 
 type UninstallMode string

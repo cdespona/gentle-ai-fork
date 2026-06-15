@@ -21,6 +21,7 @@
 | OpenCode Gentle Logo | `opencode-gentle-logo` | OpenCode home logo TUI plugin with Braille rose |
 | OpenCode Lean Workflow | `opencode-lean-workflow` | Pilot requirements-first OpenCode workflow with local artifacts |
 | OpenCode Layered TDD | `opencode-layered-tdd` | Layer-gated OpenCode TDD workflow with slice selection and human approvals |
+| Conductor Layered TDD | `conductor-layered-tdd` | Repo-local Microsoft Conductor workflow for layered TDD with Copilot CLI, project skills, and human gates. See [Conductor Layered TDD](conductor-layered-tdd.md). |
 
 ## GGA Behavior
 

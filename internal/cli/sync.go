@@ -12,6 +12,7 @@ import (
 
 	"github.com/gentleman-programming/gentle-ai/internal/agents"
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
+	"github.com/gentleman-programming/gentle-ai/internal/components/conductorlayeredtdd"
 	"github.com/gentleman-programming/gentle-ai/internal/components/engram"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
 	"github.com/gentleman-programming/gentle-ai/internal/components/layeredtdd"
@@ -593,6 +594,11 @@ func (s componentSyncStep) Run() error {
 
 	case model.ComponentMarkdownMemory:
 		cfg := markdownMemoryConfig(s.selection)
+		templateResult, err := markdownmemory.EnsureTemplates(cfg)
+		if err != nil {
+			return fmt.Errorf("initialize markdown memory templates: %w", err)
+		}
+		s.countChanged(boolToInt(templateResult.Changed))
 		for _, adapter := range adapters {
 			targetDir := componentInjectionDir(s.homeDir, s.workspaceDir, adapter)
 			res, err := markdownmemory.Inject(targetDir, adapter, cfg)
@@ -733,6 +739,16 @@ func (s componentSyncStep) Run() error {
 			}
 			s.countChanged(boolToInt(res.Changed))
 		}
+		return nil
+
+	case model.ComponentConductorLayeredTDD:
+		res, err := conductorlayeredtdd.Inject(s.workspaceDir, conductorlayeredtdd.InjectOptions{
+			IncludeMemorySkills: s.selection.MemoryBackend == model.MemoryBackendMarkdown,
+		})
+		if err != nil {
+			return fmt.Errorf("sync Conductor layered TDD workflow: %w", err)
+		}
+		s.countChanged(boolToInt(res.Changed))
 		return nil
 
 	case model.ComponentPersona:

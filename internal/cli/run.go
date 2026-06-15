@@ -16,6 +16,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/internal/agents/kimi"
 	"github.com/gentleman-programming/gentle-ai/internal/assets"
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
+	"github.com/gentleman-programming/gentle-ai/internal/components/conductorlayeredtdd"
 	"github.com/gentleman-programming/gentle-ai/internal/components/engram"
 	"github.com/gentleman-programming/gentle-ai/internal/components/gga"
 	"github.com/gentleman-programming/gentle-ai/internal/components/layeredtdd"
@@ -589,6 +590,11 @@ func (s componentApplyStep) Run() error {
 		return nil
 	case model.ComponentMarkdownMemory:
 		cfg := markdownMemoryConfig(s.selection)
+		templateResult, err := markdownmemory.EnsureTemplates(cfg)
+		if err != nil {
+			return fmt.Errorf("initialize markdown memory templates: %w", err)
+		}
+		_ = templateResult
 		for _, adapter := range adapters {
 			targetDir := componentInjectionDir(s.homeDir, s.workspaceDir, adapter)
 			if _, err := markdownmemory.Inject(targetDir, adapter, cfg); err != nil {
@@ -731,6 +737,13 @@ func (s componentApplyStep) Run() error {
 			}); err != nil {
 				return fmt.Errorf("inject layered TDD OpenCode workflow for %q: %w", adapter.Agent(), err)
 			}
+		}
+		return nil
+	case model.ComponentConductorLayeredTDD:
+		if _, err := conductorlayeredtdd.Inject(s.workspaceDir, conductorlayeredtdd.InjectOptions{
+			IncludeMemorySkills: s.selection.MemoryBackend == model.MemoryBackendMarkdown,
+		}); err != nil {
+			return fmt.Errorf("inject Conductor layered TDD workflow: %w", err)
 		}
 		return nil
 	default:
@@ -937,6 +950,14 @@ func componentPaths(homeDir string, selection model.Selection, adapters []agents
 
 func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.Selection, adapters []agents.Adapter, component model.ComponentID) []string {
 	paths := []string{}
+	if component == model.ComponentConductorLayeredTDD {
+		return conductorlayeredtdd.Paths(workspaceDir, conductorlayeredtdd.InjectOptions{
+			IncludeMemorySkills: selection.MemoryBackend == model.MemoryBackendMarkdown,
+		})
+	}
+	if component == model.ComponentMarkdownMemory {
+		paths = append(paths, markdownmemory.Paths(markdownMemoryConfig(selection))...)
+	}
 	for _, adapter := range adapters {
 		targetDir := componentPathDir(homeDir, workspaceDir, adapter, component)
 		switch component {
@@ -971,7 +992,6 @@ func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.S
 				paths = append(paths, adapter.SystemPromptFile(targetDir))
 			}
 		case model.ComponentMarkdownMemory:
-			paths = append(paths, markdownmemory.Paths(markdownMemoryConfig(selection))...)
 			if adapter.Agent() == model.AgentOpenCode || adapter.Agent() == model.AgentCodex {
 				paths = append(paths, adapter.SystemPromptFile(targetDir))
 			}
