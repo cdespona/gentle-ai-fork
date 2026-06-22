@@ -744,6 +744,7 @@ func (s componentSyncStep) Run() error {
 	case model.ComponentConductorLayeredTDD:
 		res, err := conductorlayeredtdd.Inject(s.workspaceDir, conductorlayeredtdd.InjectOptions{
 			IncludeMemorySkills: s.selection.MemoryBackend == model.MemoryBackendMarkdown,
+			ProjectSkillIDs:     s.selection.ProjectSkills,
 		})
 		if err != nil {
 			return fmt.Errorf("sync Conductor layered TDD workflow: %w", err)

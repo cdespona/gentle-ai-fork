@@ -1930,6 +1930,50 @@ func TestRunInstallProjectSkillsWriteOnlyWorkspaceOpenCodeSkills(t *testing.T) {
 	}
 }
 
+func TestRunInstallConductorLayeredTDDInstallsProjectSkillsLocally(t *testing.T) {
+	home := t.TempDir()
+	workspace := t.TempDir()
+	memoryVault := t.TempDir()
+	t.Chdir(workspace)
+
+	restoreHome := osUserHomeDir
+	restoreCommand := runCommand
+	restoreLookPath := cmdLookPath
+	t.Cleanup(func() {
+		osUserHomeDir = restoreHome
+		runCommand = restoreCommand
+		cmdLookPath = restoreLookPath
+	})
+
+	osUserHomeDir = func() (string, error) { return home, nil }
+	runCommand = func(string, ...string) error { return nil }
+	cmdLookPath = func(name string) (string, error) {
+		return "/usr/local/bin/" + name, nil
+	}
+
+	result, err := RunInstall(
+		[]string{
+			"--component", "conductor-layered-tdd",
+			"--project-skills", "java-development",
+			"--memory-backend", "markdown",
+			"--memory-vault", memoryVault,
+			"--memory-project", "kafkastream-productupa-basedoble-merger",
+		},
+		system.DetectionResult{},
+	)
+	if err != nil {
+		t.Fatalf("RunInstall() error = %v", err)
+	}
+	if !result.Verify.Ready {
+		t.Fatalf("verification ready = false, report = %#v", result.Verify)
+	}
+
+	path := filepath.Join(workspace, ".github", "skills", "conductor-java-development", "SKILL.md")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected Conductor project skill %q: %v", path, err)
+	}
+}
+
 func TestRunInstallCustomPresetDryRunShowsCustomPreset(t *testing.T) {
 	result, err := RunInstall(
 		[]string{"--agent", "claude-code", "--preset", "custom", "--dry-run"},

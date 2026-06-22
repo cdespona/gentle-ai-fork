@@ -15,7 +15,7 @@ workflow:
   entry_point: preflight_tests
   runtime:
     provider: copilot
-    default_model: gpt-5.2
+    default_model: gpt-5.4
     default_reasoning_effort: medium
   context:
     mode: accumulate
@@ -125,7 +125,7 @@ agents:
 
   - name: requirements_griller
     description: Capture requirements, blockers, assumptions, and slice split.
-    model: gpt-5.2
+    model: gpt-5.4
     reasoning:
       effort: high
     prompt: !file prompts/requirements-griller.md
@@ -168,7 +168,7 @@ agents:
 
   - name: slice_run_starter
     description: Create the slice-specific requirements artifact.
-    model: gpt-5.2
+    model: gpt-5.4
     prompt: !file prompts/slice-run-starter.md
     output:
       artifact_path:
@@ -206,7 +206,7 @@ agents:
 
   - name: layer_mapper
     description: Map real repository boundaries and skeleton layer todos.
-    model: gpt-5.2
+    model: gpt-5.4
     reasoning:
       effort: high
     prompt: !file prompts/layer-mapper.md
@@ -244,7 +244,7 @@ agents:
 
   - name: layer_todo_generator
     description: Detail the selected layer todo with Gherkin and TDD gate state.
-    model: gpt-5.2
+    model: gpt-5.4
     reasoning:
       effort: high
     prompt: !file prompts/layer-todo-generator.md
@@ -291,7 +291,7 @@ agents:
 
   - name: implementor
     description: Implement only inside the approved layer boundary.
-    model: gpt-5.2
+    model: gpt-5.4
     prompt: !file prompts/implementor.md
     output:
       selected_layer:
@@ -371,7 +371,7 @@ agents:
 
   - name: layer_reviewer
     description: Review one completed layer and record risks or gaps.
-    model: gpt-5.2
+    model: gpt-5.4
     reasoning:
       effort: high
     prompt: !file prompts/layer-reviewer.md
@@ -415,7 +415,7 @@ agents:
 
   - name: final_reviewer
     description: Review the whole selected slice and propose memory candidates.
-    model: gpt-5.2
+    model: gpt-5.4
     reasoning:
       effort: high
     prompt: !file prompts/final-reviewer.md
@@ -456,7 +456,7 @@ agents:
 
   - name: memory_capturer
     description: Persist human-approved memory candidates from the final review.
-    model: gpt-5.2
+    model: gpt-5.4-mini
     reasoning:
       effort: low
     prompt: !file prompts/memory-capturer.md

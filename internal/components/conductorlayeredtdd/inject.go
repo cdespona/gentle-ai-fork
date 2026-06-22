@@ -34,6 +34,7 @@ var memorySkillIDs = []model.SkillID{
 
 type InjectOptions struct {
 	IncludeMemorySkills bool
+	ProjectSkillIDs     []model.SkillID
 }
 
 type InjectionResult struct {
@@ -110,7 +111,16 @@ func skillIDs(opts InjectOptions) []model.SkillID {
 	if opts.IncludeMemorySkills {
 		ids = append(ids, memorySkillIDs...)
 	}
-	return ids
+	seen := make(map[model.SkillID]struct{}, len(ids)+len(opts.ProjectSkillIDs))
+	uniqueIDs := make([]model.SkillID, 0, len(ids)+len(opts.ProjectSkillIDs))
+	for _, id := range append(ids, opts.ProjectSkillIDs...) {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniqueIDs = append(uniqueIDs, id)
+	}
+	return uniqueIDs
 }
 
 func copyWorkflowAssets(workspaceDir string) (InjectionResult, error) {

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gentleman-programming/gentle-ai/internal/model"
 )
 
 func TestInjectInstallsWorkflowPromptsSkillsAndGitignore(t *testing.T) {
@@ -77,6 +79,21 @@ func TestInjectSkipsMemorySkillsWhenMemoryIsNotSelected(t *testing.T) {
 	baseSkill := readTestFile(t, filepath.Join(workspace, ".github", "skills", "conductor-tdd", "SKILL.md"))
 	if !strings.Contains(baseSkill, "Test-Driven Development") {
 		t.Fatalf("base TDD skill was not installed")
+	}
+}
+
+func TestInjectInstallsRequestedProjectSkillsWithConductorPrefix(t *testing.T) {
+	workspace := t.TempDir()
+
+	if _, err := Inject(workspace, InjectOptions{
+		ProjectSkillIDs: []model.SkillID{model.SkillJavaDevelopment},
+	}); err != nil {
+		t.Fatalf("Inject() error = %v", err)
+	}
+
+	skill := readTestFile(t, filepath.Join(workspace, ".github", "skills", "conductor-java-development", "SKILL.md"))
+	if !strings.Contains(skill, "Java Development") {
+		t.Fatalf("Java development skill was not installed into .github/skills/conductor-java-development")
 	}
 }
 

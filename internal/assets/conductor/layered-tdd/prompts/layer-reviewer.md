@@ -16,17 +16,17 @@ Inputs:
 - Verification stdout:
 
 ```text
-{{ verification_tests.output.stdout }}
-{{ verification_lint.output.stdout }}
-{{ verification_security.output.stdout }}
+{{ verification_tests.output.stdout | replace("[", "\\[") | replace("]", "\\]") }}
+{{ verification_lint.output.stdout | replace("[", "\\[") | replace("]", "\\]") }}
+{{ verification_security.output.stdout | replace("[", "\\[") | replace("]", "\\]") }}
 ```
 
 - Verification stderr:
 
 ```text
-{{ verification_tests.output.stderr }}
-{{ verification_lint.output.stderr }}
-{{ verification_security.output.stderr }}
+{{ verification_tests.output.stderr | replace("[", "\\[") | replace("]", "\\]") }}
+{{ verification_lint.output.stderr | replace("[", "\\[") | replace("]", "\\]") }}
+{{ verification_security.output.stderr | replace("[", "\\[") | replace("]", "\\]") }}
 ```
 
 Tasks:

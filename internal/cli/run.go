@@ -742,6 +742,7 @@ func (s componentApplyStep) Run() error {
 	case model.ComponentConductorLayeredTDD:
 		if _, err := conductorlayeredtdd.Inject(s.workspaceDir, conductorlayeredtdd.InjectOptions{
 			IncludeMemorySkills: s.selection.MemoryBackend == model.MemoryBackendMarkdown,
+			ProjectSkillIDs:     s.selection.ProjectSkills,
 		}); err != nil {
 			return fmt.Errorf("inject Conductor layered TDD workflow: %w", err)
 		}
@@ -953,6 +954,7 @@ func componentPathsWithWorkspace(homeDir, workspaceDir string, selection model.S
 	if component == model.ComponentConductorLayeredTDD {
 		return conductorlayeredtdd.Paths(workspaceDir, conductorlayeredtdd.InjectOptions{
 			IncludeMemorySkills: selection.MemoryBackend == model.MemoryBackendMarkdown,
+			ProjectSkillIDs:     selection.ProjectSkills,
 		})
 	}
 	if component == model.ComponentMarkdownMemory {

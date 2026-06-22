@@ -35,6 +35,16 @@ gentle-ai install \
 
 For this Conductor workflow, memory backend choices are intentionally limited to `markdown` or `none`. Engram is not supported by this workflow.
 
+Add extra repo-local skills for the Conductor agents with `--project-skills`. These are copied under `.github/skills/` with the `conductor-` prefix so the workflow can load them without depending on a global agent install:
+
+```bash
+gentle-ai install \
+  --component conductor-layered-tdd \
+  --project-skills java-development \
+  --memory-backend markdown \
+  --memory-project kafkastream-productupa-basedoble-merger
+```
+
 ## What Gentle AI Installs
 
 `gentle-ai install --component conductor-layered-tdd` writes only local repository files. It does not download Conductor, install the GitHub Copilot CLI skill, or refresh this workflow from Microsoft/GitHub.
