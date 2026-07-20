@@ -31,6 +31,21 @@ Use frontmatter:
 - `owner`: `human`
 - `workflow`: `layered-tdd`
 
+Artifact style:
+
+- Use visual-first structure. Prefer dashboards, matrices, and tables over prose.
+- Keep prose short and only use it for final judgment or nuance that tables cannot express.
+- `99-final-review.md` must include:
+  - frontmatter first, including `memory_decision` when useful
+  - `## Completion Dashboard` table with slice goal, status, owner, layers completed, verification result, residual risk count, memory candidate count, and next human decision
+  - `## Slice Flow` Mermaid flowchart showing requirements to layers to final review
+  - `## Layer Completion Matrix` table with layer, todo file, status, red-test state, verification summary, and approval notes
+  - `## Verification Matrix` table with command, latest exit code/result, and evidence
+  - `## Waived Gates` table with layer, gate, reason, and risk
+  - `## Residual Risks` table with risk, impact, mitigation, and owner
+  - `## Memory Candidates` table with candidate id, observation, durability, destination suggestion, and approval checkbox
+  - `## Human Memory Decision` section that makes capture/skip/revise choices obvious
+
 Return structured output:
 
 - `artifact_path`: final review path inside the active slice folder

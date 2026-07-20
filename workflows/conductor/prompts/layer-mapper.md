@@ -24,6 +24,22 @@ The layer map must include:
 - skeleton todo filename for each layer
 - open risks
 
+Artifact style:
+
+- Use visual-first structure. Prefer Mermaid maps, dashboards, and tables over prose.
+- Keep prose short and only use it for rationale or risks that need explanation.
+- `01-layer-map.md` must include:
+  - frontmatter first, including an empty or current `selected_layer` field when useful
+  - `## Status Dashboard` table with status, owner, slice goal, layer count, recommended next layer, selected layer, artifact path, and next human decision
+  - `## Layer Flow` Mermaid flowchart showing recommended order and major dependencies
+  - `## Layer Matrix` table with order, layer id, todo file, responsibility, implementation boundary, top-level behavior touched, dependencies, and risk
+  - `## Selection Board` table optimized for the human to choose the next layer, with layer id, why this layer now, readiness, and blocking notes
+  - `## Open Risks` table with risk, affected layer, impact, and mitigation
+- Skeleton todo files should also be visual-first:
+  - frontmatter first with `status: skeleton`, `owner: human`, `workflow: layered-tdd`, and `selected_layer` set to that layer id when known
+  - `## Layer Dashboard` table with layer id, status, owner, todo file, and next action
+  - `## Boundary` table with allowed files/areas, forbidden files/areas, and behavior constraints
+
 After revision, the active todo filenames in the layer map and the non-superseded files in `layers/` must match exactly. Do not leave stale draft todos for layers that were removed by human feedback.
 
 Use frontmatter:

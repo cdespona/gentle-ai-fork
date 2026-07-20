@@ -161,6 +161,18 @@ If you edit or comment in `.github/plans/<slice-slug>/00-requirements.md`, choos
 
 These artifacts are local working files. The Conductor layered TDD installer adds `.github/plans/` to the target repository's `.gitignore`.
 
+Artifacts are generated in a visual-first format so a resumed run can be understood quickly:
+
+| Artifact area | Expected shape |
+| --- | --- |
+| Requirements and slice selection | Status or decision dashboard, scope/slice tables, blocker and assumption tables. |
+| Layer map | Mermaid layer flow, layer matrix, selection board, and risk table. |
+| Layer todo | Gate dashboard, red-test table, implementation boundary table, task board, and risk board. |
+| Checkpoint/review sections | Dashboard plus route, verification, boundary, and issue tables. |
+| Final review and memory capture | Completion/capture dashboards, layer and verification matrices, risk and memory candidate tables. |
+
+Use prose only where a table cannot carry the meaning: rationale, caveats, exact evidence, or final judgment.
+
 ## Preflight Checks
 
 The first workflow step runs `test_command`, which defaults to `make test`.

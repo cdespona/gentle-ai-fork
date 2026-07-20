@@ -154,7 +154,14 @@ agents:
     type: human_gate
     prompt: |
       Review the generated `slice-selection.md`, then select exactly one slice.
+
+      Discovery artifact: `{{ requirements_griller.output.artifact_path }}`
+      Discovery task slug: `{{ requirements_griller.output.task_slug }}`
+      Discovery summary: {{ requirements_griller.output.summary }}
+
       The selected slice should start a fresh slice-specific run.
+      Write the chosen slice into the artifact, preferably as `selected_slice`
+      frontmatter or an explicit human decision in the body.
     options:
       - label: I selected one slice and want a fresh slice-specific run.
         value: selected
@@ -184,7 +191,7 @@ agents:
         type: string
         description: Short summary of the selected slice.
     routes:
-      - to: requirements_gate
+      - to: slice_requirements_gate
 
   - name: requirements_gate
     type: human_gate
@@ -193,8 +200,37 @@ agents:
       non-blocker assumptions, and explicitly out-of-scope work. If you edited
       `00-requirements.md` or added feedback there, choose revise so the
       requirements griller can read it and update the artifact before mapping.
+
+      Requirements artifact: `{{ requirements_griller.output.artifact_path }}`
+      Task slug: `{{ requirements_griller.output.task_slug }}`
+      Blocker count: {{ requirements_griller.output.blocker_count }}
+      Summary: {{ requirements_griller.output.summary }}
     options:
       - label: Requirements are confirmed for one selected slice.
+        value: approve
+        route: layer_mapper
+      - label: I edited or commented on requirements; rerun the griller.
+        value: revise
+        route: requirements_griller
+      - label: Stop before layer mapping.
+        value: stop
+        route: stopped
+
+  - name: slice_requirements_gate
+    type: human_gate
+    prompt: |
+      Review the slice-specific `00-requirements.md`. Confirm the selected
+      slice goal, blockers, non-blocker assumptions, and explicitly out-of-scope
+      work. If you edited `00-requirements.md` or added feedback there, choose
+      revise so the requirements griller can read it and update the artifact
+      before mapping.
+
+      Selected slice slug: `{{ slice_run_starter.output.slice_slug }}`
+      Requirements artifact: `{{ slice_run_starter.output.artifact_path }}`
+      Blockers remaining: {{ slice_run_starter.output.blockers_remaining }}
+      Summary: {{ slice_run_starter.output.summary }}
+    options:
+      - label: Requirements are confirmed for this selected slice.
         value: approve
         route: layer_mapper
       - label: I edited or commented on requirements; rerun the griller.
@@ -231,6 +267,11 @@ agents:
     prompt: |
       Review `01-layer-map.md`, then choose the next layer to detail. The human
       selection should be written into the layer map or stated in the gate reply.
+
+      Layer map artifact: `{{ layer_mapper.output.artifact_path }}`
+      Layer count: {{ layer_mapper.output.layer_count }}
+      Recommended next layer: `{{ layer_mapper.output.recommended_next_layer }}`
+      Summary: {{ layer_mapper.output.summary }}
     options:
       - label: I selected the next layer to run.
         value: selected
@@ -275,6 +316,13 @@ agents:
     prompt: |
       Review the selected layer todo. Approve Gherkin, test ownership, and the
       red-test gate state before production implementation.
+
+      Selected layer: `{{ layer_todo_generator.output.selected_layer }}`
+      Layer todo artifact: `{{ layer_todo_generator.output.artifact_path }}`
+      Test ownership: `{{ layer_todo_generator.output.test_ownership }}`
+      Red-test gate state: `{{ layer_todo_generator.output.red_gate_state }}`
+      Ready for implementation: {{ layer_todo_generator.output.ready_for_implementation }}
+      Summary: {{ layer_todo_generator.output.summary }}
     options:
       - label: The layer todo and red-test gate are approved.
         value: approve
@@ -322,6 +370,10 @@ agents:
     prompt: |
       The implementor found new top-level behavior or a contradiction. Choose how
       to route the checkpoint before any more production work.
+
+      Selected layer: `{{ implementor.output.selected_layer }}`
+      Active layer todo: `{{ layer_todo_generator.output.artifact_path }}`
+      Checkpoint summary: {{ implementor.output.checkpoint_summary }}
     options:
       - label: Revise the current layer todo.
         value: revise_layer_todo
@@ -399,6 +451,13 @@ agents:
     prompt: |
       Review the layer result and the reviewer notes. Approve the layer, request
       a focused fix, select another layer, or finish the slice.
+
+      Implemented layer: `{{ implementor.output.selected_layer }}`
+      Reviewed artifact: `{{ layer_reviewer.output.artifact_path }}`
+      Approval recommended: {{ layer_reviewer.output.approved_recommendation }}
+      More layers remaining: {{ layer_reviewer.output.more_layers_remaining }}
+      Review issues: {{ layer_reviewer.output.issues }}
+      Summary: {{ layer_reviewer.output.summary }}
     options:
       - label: Approve this layer and choose another layer.
         value: approve_more_layers
@@ -443,6 +502,12 @@ agents:
     prompt: |
       Review `99-final-review.md`. Approve only the memory candidates worth
       capturing with the repository's existing memory workflow.
+
+      Final review artifact: `{{ final_reviewer.output.artifact_path }}`
+      Ready to finish: {{ final_reviewer.output.ready_to_finish }}
+      Residual risks: {{ final_reviewer.output.residual_risks }}
+      Memory candidates: {{ final_reviewer.output.memory_candidates }}
+      Summary: {{ final_reviewer.output.summary }}
     options:
       - label: Capture approved memory candidates separately.
         value: capture

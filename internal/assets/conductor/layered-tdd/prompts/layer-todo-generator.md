@@ -34,6 +34,21 @@ Use frontmatter:
 - `owner`: `human`
 - `workflow`: `layered-tdd`
 
+Artifact style:
+
+- Use visual-first structure. Prefer dashboards, tables, checklists, and compact diagrams over prose.
+- Keep prose short and only use it for rationale, evidence, or exact test failure details.
+- The selected layer todo must include:
+  - frontmatter first, including `selected_layer`, `test_ownership`, and `red_gate_state`
+  - `## Gate Dashboard` table with selected layer, status, owner, test ownership, red-test state, implementation allowed yes/no, artifact path, and next human decision
+  - `## Red-Test Gate` table with state, evidence command, observed result, waiver/approval reason, and whether production implementation may proceed
+  - `## Behavior Contract` with concise Gherkin or equivalent examples
+  - `## Implementation Boundary` table with allowed areas, forbidden areas, top-level behavior limits, and read-only tests
+  - `## Task Board` checklist table with task, type, owner, status, and notes
+  - `## Risk Board` table with risk, trigger, mitigation, and checkpoint condition
+  - `## Human Decision` section that clearly states what the human must approve or change
+- If `red_gate_state` is `blocked`, make the blocked reason visible in the `Gate Dashboard` and `Red-Test Gate` table.
+
 Return structured output:
 
 - `artifact_path`: selected layer todo path

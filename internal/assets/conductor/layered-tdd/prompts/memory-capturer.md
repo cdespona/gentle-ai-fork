@@ -38,6 +38,13 @@ Tasks:
    - skipped candidates and reasons
 9. If Markdown memory is unavailable, append a short "Memory capture" section stating that capture was skipped because `memory_vault`, `memory_project`, or the vault root was not available.
 
+Memory capture section style:
+
+- Append a visual-first `## Memory Capture` section.
+- Include a `### Capture Dashboard` table with backend, captured count, staged/promoted files, skipped count, and final status.
+- Include a `### Capture Matrix` table with candidate id, decision, destination file, captured/staged/promoted/skipped, and reason.
+- Keep prose to one short summary sentence.
+
 Return structured output:
 
 - `artifact_path`: `{{ final_reviewer.output.artifact_path }}`

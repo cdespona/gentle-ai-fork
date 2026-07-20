@@ -15,6 +15,19 @@ Tasks:
    - `owner`: `human`
    - `workflow`: `layered-tdd`
 
+Artifact style:
+
+- Use visual-first structure. Prefer dashboards and tables over prose.
+- Keep prose short and only use it for rationale, caveats, or exact human decisions.
+- The generated `00-requirements.md` must include:
+  - frontmatter first
+  - `## Status Dashboard` table with selected slice slug, status, owner, blockers remaining, artifact path, and next human decision
+  - `## Slice Scope` table with goal, in-scope behavior, out-of-scope slices, dependencies, and non-goals
+  - `## Blockers` table with question, why it blocks, owner, and answer/status
+  - `## Assumptions` table with assumption, confidence, risk if wrong, and validation path
+  - `## Source Slice` table linking back to the discovery artifact and selected slice id/title
+  - a small Mermaid flowchart from discovery slice to this fresh slice run when helpful
+
 Return structured output:
 
 - `artifact_path`: the new slice-specific requirements file

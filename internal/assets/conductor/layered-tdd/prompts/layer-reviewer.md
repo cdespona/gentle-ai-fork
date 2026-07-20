@@ -38,6 +38,17 @@ Tasks:
 5. Append a concise review section to the selected layer todo.
 6. Determine whether unfinished layers remain from `01-layer-map.md`.
 
+Review section style:
+
+- Append a visual-first `## Layer Review` section to the layer todo.
+- Prefer tables and checklists over prose.
+- Include:
+  - `### Review Dashboard` table with layer, reviewed artifact, approval recommendation, more layers remaining, and next human decision
+  - `### Verification Matrix` table with command, exit code, pass/fail, and short evidence
+  - `### Boundary Check` table with approved boundary, files changed, result, and notes
+  - `### Issues And Risks` table with issue, severity, required action, and owner
+  - `### Reviewer Recommendation` with one short paragraph only if needed
+
 Return structured output:
 
 - `artifact_path`: reviewed layer todo path
