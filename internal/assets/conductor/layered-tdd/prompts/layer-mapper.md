@@ -7,7 +7,7 @@ Requirements have been approved by the human. Do not write production code.
 The active requirements artifact is the existing `00-requirements.md` from this
 run:
 
-{% if slice_run_starter.output.artifact_path %}
+{% if slice_run_starter is defined and slice_run_starter.output.artifact_path is defined %}
 `{{ slice_run_starter.output.artifact_path }}`
 {% else %}
 `{{ requirements_griller.output.artifact_path }}`

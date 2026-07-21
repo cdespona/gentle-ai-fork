@@ -396,7 +396,10 @@ flowchart TB
     Ownership --> AgentWritten
     Ownership --> Waived
     HumanWritten --> RedState
-    AgentWritten --> RedState
+    AgentWritten --> ApproveGherkin["Human approves Gherkin"]
+    ApproveGherkin --> AuthorTest["Agent writes and runs top-level test"]
+    AuthorTest --> ConfirmRed["Human records approved gate state"]
+    ConfirmRed --> RedState
     Waived --> RedState
     RedState -->|"observed-red"| Allowed
     RedState -->|"not-run-human-approved"| Allowed
@@ -432,6 +435,31 @@ test_ownership: agent-written-after-approval
 red_gate_state: blocked
 ---
 ```
+
+#### Reproducible Agent-Written Test Route
+
+Use this route when you approve the Gherkin but want the agent to author the
+top-level test before any production code is touched.
+
+```mermaid
+flowchart LR
+    A["Approve Gherkin and agent test ownership"] --> B["Choose: agent authors top-level test"]
+    B --> C["Agent writes and runs only the approved test"]
+    C --> D["Human reviews evidence and updates red_gate_state"]
+    D --> E["Choose: start production implementation"]
+```
+
+| Step | Artifact state / action | Production code allowed? |
+| --- | --- | --- |
+| 1 | Set `test_ownership: agent-written-after-approval`; keep `red_gate_state: blocked`. Make the Gate Dashboard, Task Board, and Human Decision use the same ownership. | No |
+| 2 | At the layer-todo gate, choose **Gherkin is approved; have the agent author and run the top-level test first.** | No |
+| 3 | The test-author agent adds only the approved top-level test and records the command/result in `## Red-Test Gate`. It leaves `red_gate_state: blocked`. | No |
+| 4 | Review the evidence. In the todo, set `status: ready-for-implementation` and an allowed state: `observed-red`, `already-passing-human-approved`, `not-run-human-approved`, or `waived`; record the required evidence or reason. | Yes |
+| 5 | At the evidence gate, choose **I recorded the approved red-test state; start production implementation.** | Yes |
+
+Do not choose the ordinary “layer todo and red-test gate are approved” option
+while the agent-authored test is still pending. Do not set `observed-red` before
+the agent has run the test and you have reviewed its evidence.
 
 Waived top-level red test:
 

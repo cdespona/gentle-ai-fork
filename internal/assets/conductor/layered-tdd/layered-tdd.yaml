@@ -518,6 +518,9 @@ agents:
       Ready for implementation: {{ layer_todo_generator.output.ready_for_implementation }}
       Summary: {{ layer_todo_generator.output.summary }}
     options:
+      - label: Gherkin is approved; have the agent author and run the top-level test first.
+        value: author_agent_test
+        route: agent_test_author
       - label: The layer todo and red-test gate are approved.
         value: approve
         route: implementor
@@ -544,10 +547,74 @@ agents:
       Ready for implementation: {{ layer_todo_reviser.output.ready_for_implementation }}
       Summary: {{ layer_todo_reviser.output.summary }}
     options:
+      - label: Gherkin is approved; have the agent author and run the top-level test first.
+        value: author_agent_test
+        route: agent_test_author
       - label: The same layer todo and red-test gate are approved.
         value: approve
         route: implementor
       - label: Revise this same layer todo or gate state again.
+        value: revise
+        route: layer_todo_reviser
+      - label: Go back to layer selection.
+        value: select_other_layer
+        route: layer_selection_gate
+      - label: Stop this slice.
+        value: stop
+        route: stopped
+
+  - name: agent_test_author
+    description: Author and run the approved top-level test without changing production code.
+    model: gpt-5.4
+    reasoning:
+      effort: high
+    prompt: !file prompts/agent-test-author.md
+    output:
+      selected_layer:
+        type: string
+        description: Layer whose approved top-level test was authored.
+      test_files_modified:
+        type: array
+        description: Top-level test files created or changed; production files are excluded.
+      test_command:
+        type: string
+        description: Exact command used to run the approved top-level test.
+      observed_result:
+        type: string
+        description: Concise test result, including failure summary when red.
+      checkpoint_required:
+        type: boolean
+        description: True when authoring the approved test exposed new top-level behavior or a contradiction.
+      checkpoint_summary:
+        type: string
+        description: Checkpoint details if human routing is required.
+      summary:
+        type: string
+        description: Test-authoring summary with no production implementation.
+    routes:
+      - to: checkpoint_gate
+        when: "{{ output.checkpoint_required }}"
+      - to: agent_test_evidence_gate
+
+  - name: agent_test_evidence_gate
+    type: human_gate
+    prompt: |
+      Review the agent-authored top-level test before any production work.
+      The layer todo must remain blocked until you record an allowed
+      `red_gate_state` and set `status: ready-for-implementation` in the
+      artifact.
+
+      Selected layer: `{{ agent_test_author.output.selected_layer }}`
+      Active layer todo: `{{ layer_todo_generator.output.artifact_path }}`
+      Test files modified: {{ agent_test_author.output.test_files_modified }}
+      Test command: {{ agent_test_author.output.test_command }}
+      Observed result: {{ agent_test_author.output.observed_result }}
+      Summary: {{ agent_test_author.output.summary }}
+    options:
+      - label: I recorded the approved red-test state; start production implementation.
+        value: approve_red_test
+        route: implementor
+      - label: Revise the same layer todo or test contract.
         value: revise
         route: layer_todo_reviser
       - label: Go back to layer selection.
