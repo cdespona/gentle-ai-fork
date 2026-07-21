@@ -12,6 +12,10 @@ Input request:
 
 {% if workflow.input.resume_path %}
 Resume path: `{{ workflow.input.resume_path }}`
+
+This is an authoritative active plan folder. Read and revise only
+`{{ workflow.input.resume_path }}/00-requirements.md`; do not infer a new task
+slug or create a sibling plan folder.
 {% endif %}
 
 Your job is requirements discovery only. Do not design the implementation and do not write production code.
@@ -31,7 +35,7 @@ Tasks:
 
 1. Inspect only enough repository context to understand the request, existing boundaries, and risk.
 2. Recall targeted Markdown memory when configured and relevant, then cross-check it against current repository facts.
-3. Create or revise `.github/plans/<task-slug>/00-requirements.md`, unless the request contains multiple independently valuable slices. If that file already exists, read human edits, comments, and feedback before changing it.
+3. Create or revise `.github/plans/<task-slug>/00-requirements.md`, unless the request contains multiple independently valuable slices. When `resume_path` is set, that path is the fixed task folder. If the target file already exists, read human edits, comments, and feedback before changing it.
 4. If there are multiple independently valuable slices, create `.github/plans/<task-slug>/slice-selection.md` and stop there.
 5. Use concise frontmatter with:
    - `status`: `needs-human-confirmation`, `blocked`, or `slice-selection-required`

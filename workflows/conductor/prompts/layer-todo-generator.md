@@ -4,10 +4,17 @@ If the Copilot CLI caveman skill is available, use caveman for todo rationale, r
 
 The human selected the next layer. Detail only that layer's todo. Do not implement production code.
 
+The active layer map is fixed:
+
+`{{ layer_mapper.output.artifact_path }}`
+
+Use its parent folder as the fixed active slice folder. Do not infer a new slice
+slug or create a sibling plan folder.
+
 Tasks:
 
 1. Read `01-layer-map.md` and the human's selected layer.
-2. Revise only the selected `.github/plans/<slice-slug>/layers/<nn>-<layer>.todo.md`.
+2. Revise only the selected todo under that active map's `layers/` directory.
 3. Include top-level Gherkin proposals.
 4. Set one layer-level test ownership mode:
    - `human-written`

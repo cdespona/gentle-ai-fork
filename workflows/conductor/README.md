@@ -83,6 +83,9 @@ conductor run workflows/conductor/layered-tdd.yaml \
   --input resume_path=".github/plans/<slice-slug>"
 ```
 
+`resume_path` is authoritative: the griller revises that folder's existing
+`00-requirements.md` and must not create a sibling plan folder.
+
 ### Start With Markdown Memory
 
 ```bash
@@ -161,6 +164,21 @@ Prose should explain only what tables cannot: rationale, caveats, exact evidence
 | Checkpoint | Active layer todo | The checkpoint is not actually new top-level behavior, or you chose a route. | Route to layer todo or layer selection if scope changed. | The contradiction blocks the slice. |
 | Layer approval | Active layer todo | Approve and choose another layer, or approve and final review. | Send back for focused fixes. | You want to pause after review. |
 | Memory | `99-final-review.md` | Capture approved candidates, or finish without capture. | The final review or memory candidates are wrong. | Not offered; use skip to finish. |
+
+### Revision guarantee
+
+Choosing **revise** at a requirements, slice-selection, layer-map, or layer-todo
+gate keeps the workflow on the current artifact. The workflow routes to a
+dedicated reviser with the creator's original artifact path, so it updates that
+file in place and must not infer a new slug or create a sibling plan folder.
+
+```mermaid
+flowchart LR
+    Create["Create active artifact"] --> Review["Human review"]
+    Review -->|"revise"| Reviser["Pinned reviser"]
+    Reviser -->|"same path"| Review
+    Review -->|"approve"| Next["Next workflow stage"]
+```
 
 ## Frontmatter Rules
 
@@ -603,7 +621,7 @@ Before choosing capture:
 | --- | --- | --- | --- |
 | "I forgot where I am." | Latest `.github/plans/<slug>/` folder | Highest-numbered artifact with `owner: human`. | Gate matching that artifact. |
 | Multiple slice ideas. | `slice-selection.md` | `status: selected`, `selected_slice: <one slice>`. | Selected fresh slice run. |
-| Requirements feel wrong. | `00-requirements.md` | `status: revising`, add comments/answers. | Revise requirements. |
+| Requirements feel wrong. | `00-requirements.md` | `status: revising`, add comments/answers. | Revise requirements; the same artifact is updated in place. |
 | No idea which layer is next. | `01-layer-map.md` | `selected_layer: <todo filename>`. | Selected next layer. |
 | Agent wants to implement but tests are unclear. | Active layer todo | `test_ownership`, `red_gate_state`, evidence. | Revise or approve layer todo. |
 | New behavior appeared during implementation. | Active layer todo | `status: checkpoint`, checkpoint notes. | Checkpoint gate route. |

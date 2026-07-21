@@ -4,13 +4,25 @@ If the Copilot CLI caveman skill is available, use caveman for mapping notes, ri
 
 Requirements have been approved by the human. Do not write production code.
 
+The active requirements artifact is the existing `00-requirements.md` from this
+run:
+
+{% if slice_run_starter.output.artifact_path %}
+`{{ slice_run_starter.output.artifact_path }}`
+{% else %}
+`{{ requirements_griller.output.artifact_path }}`
+{% endif %}
+
+Use the parent folder of that existing `00-requirements.md` as the fixed active
+slice folder. Do not infer a new slice slug or create a sibling plan folder.
+
 Tasks:
 
 1. Read the approved `00-requirements.md`.
 2. Inspect the repository's real architecture boundaries.
-3. Create or revise `.github/plans/<slice-slug>/01-layer-map.md`.
-4. Reconcile `.github/plans/<slice-slug>/layers/` so it contains todo files only for the current layer map.
-5. Create skeleton todo files under `.github/plans/<slice-slug>/layers/` for current layers that do not already have a todo.
+3. Create or revise `01-layer-map.md` only in that fixed active slice folder.
+4. Reconcile that folder's `layers/` directory so it contains todo files only for the current layer map.
+5. Create skeleton todo files only under that folder's `layers/` directory for current layers that do not already have a todo.
 6. Delete obsolete skeleton todos from earlier layer-map revisions when they are no longer listed in the current layer map and have no implementation/review history. If an obsolete todo has implementation or review history, keep it but mark its frontmatter `status: superseded` and add a short superseded note pointing to the current layer map.
 7. Recommend an order, but do not force it. The human chooses the next layer.
 
