@@ -452,7 +452,7 @@ flowchart LR
 | Step | Artifact state / action | Production code allowed? |
 | --- | --- | --- |
 | 1 | Set `test_ownership: agent-written-after-approval`; keep `red_gate_state: blocked`. Make the Gate Dashboard, Task Board, and Human Decision use the same ownership. | No |
-| 2 | At the layer-todo gate, choose **Gherkin is approved; have the agent author and run the top-level test first.** | No |
+| 2 | At the layer-todo gate, choose **Gherkin is approved; have the agent author and run the top-level test first.** That route is the durable approval signal; the test-author records it in the todo. | No |
 | 3 | The test-author agent adds only the approved top-level test and records the command/result in `## Red-Test Gate`. It leaves `red_gate_state: blocked`. | No |
 | 4 | Review the evidence. In the todo, set `status: ready-for-implementation` and an allowed state: `observed-red`, `already-passing-human-approved`, `not-run-human-approved`, or `waived`; record the required evidence or reason. | Yes |
 | 5 | At the evidence gate, choose **I recorded the approved red-test state; start production implementation.** | Yes |

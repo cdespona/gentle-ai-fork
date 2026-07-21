@@ -592,7 +592,7 @@ agents:
         type: string
         description: Test-authoring summary with no production implementation.
     routes:
-      - to: checkpoint_gate
+      - to: agent_test_checkpoint_gate
         when: "{{ output.checkpoint_required }}"
       - to: agent_test_evidence_gate
 
@@ -618,6 +618,26 @@ agents:
         value: revise
         route: layer_todo_reviser
       - label: Go back to layer selection.
+        value: select_other_layer
+        route: layer_selection_gate
+      - label: Stop this slice.
+        value: stop
+        route: stopped
+
+  - name: agent_test_checkpoint_gate
+    type: human_gate
+    prompt: |
+      The test author found a top-level contract issue before production work.
+      Choose how to route it before authoring or changing any further tests.
+
+      Selected layer: `{{ agent_test_author.output.selected_layer }}`
+      Active layer todo: `{{ layer_todo_generator.output.artifact_path }}`
+      Checkpoint summary: {{ agent_test_author.output.checkpoint_summary }}
+    options:
+      - label: Revise the current layer todo.
+        value: revise_layer_todo
+        route: layer_todo_reviser
+      - label: Return to layer selection.
         value: select_other_layer
         route: layer_selection_gate
       - label: Stop this slice.
