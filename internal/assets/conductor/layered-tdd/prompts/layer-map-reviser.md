@@ -7,6 +7,9 @@ The active layer map is fixed:
 This is a revision pass, not a fresh layer-mapping run. Read the active map,
 its active layer todos, and all human feedback before revising in place.
 
+Persist the immediately preceding Conductor gate decision and any non-empty gate
+comment in `## Decision Log`.
+
 Hard rules:
 
 - Revise only `{{ layer_mapper.output.artifact_path }}` and its `layers/`

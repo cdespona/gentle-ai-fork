@@ -8,6 +8,9 @@ This is a revision pass, not a fresh slice start. Read the active artifact and
 all human edits, comments, frontmatter, and feedback in it before revising that
 exact file.
 
+Persist the immediately preceding Conductor gate decision and any non-empty gate
+comment in `## Decision Log`.
+
 Hard rules:
 
 - Revise only `{{ slice_run_starter.output.artifact_path }}`.

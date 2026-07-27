@@ -7,6 +7,9 @@ The active discovery artifact is fixed:
 This is a revision pass, not a fresh discovery run. Read the active artifact
 and all human edits before revising that exact file.
 
+Persist the immediately preceding Conductor gate decision and any non-empty gate
+comment in `## Decision Log`.
+
 Hard rules:
 
 - Revise only `{{ requirements_griller.output.artifact_path }}`.

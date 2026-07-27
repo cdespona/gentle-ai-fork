@@ -19,7 +19,9 @@ Hard rules:
 Tasks:
 
 1. Read the selected layer todo from `{{ layer_todo_generator.output.artifact_path }}`.
-2. Confirm the red-test gate state is allowed.
+2. Confirm `status: ready-for-implementation`, an allowed red-test gate state,
+   and recent full-suite evidence in `## Evidence`. Do not rerun or reinterpret
+   the red gate; Conductor has already verified and recorded it.
 3. Implement the minimal production changes for this layer only.
 4. Add internal tests where useful.
 5. If human routing is required, update the layer todo frontmatter to checkpoint state and add a `Human checkpoint decision needed` section that includes:

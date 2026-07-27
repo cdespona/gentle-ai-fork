@@ -181,15 +181,16 @@ agents:
       Discovery task slug: `{{ requirements_griller.output.task_slug }}`
       Discovery summary: {{ requirements_griller.output.summary }}
 
-      The selected slice should start a fresh slice-specific run.
-      Write the chosen slice into the artifact, preferably as `selected_slice`
-      frontmatter or an explicit human decision in the body.
+      The selected slice should start a fresh slice-specific run. Enter its id
+      in the gate comment; the next agent records it in the artifact.
     options:
       - label: I selected one slice and want a fresh slice-specific run.
         value: selected
+        prompt_for: selected_slice_and_feedback
         route: slice_run_starter
       - label: Revise the slice split before continuing.
         value: revise
+        prompt_for: feedback
         route: slice_selection_reviser
       - label: Stop this discovery run.
         value: stop
@@ -269,9 +270,11 @@ agents:
     options:
       - label: Requirements are confirmed for one selected slice.
         value: approve
+        prompt_for: feedback
         route: layer_mapper
       - label: I edited or commented on requirements; revise this same artifact.
         value: revise
+        prompt_for: feedback
         route: requirements_reviser
       - label: Stop before layer mapping.
         value: stop
@@ -290,9 +293,11 @@ agents:
     options:
       - label: Requirements are confirmed for this same slice.
         value: approve
+        prompt_for: feedback
         route: layer_mapper
       - label: I edited or commented on requirements; revise this same artifact again.
         value: revise
+        prompt_for: feedback
         route: requirements_reviser
       - label: Stop before layer mapping.
         value: stop
@@ -314,9 +319,11 @@ agents:
     options:
       - label: Requirements are confirmed for this selected slice.
         value: approve
+        prompt_for: feedback
         route: layer_mapper
       - label: I edited or commented on requirements; revise this same artifact.
         value: revise
+        prompt_for: feedback
         route: slice_requirements_reviser
       - label: Stop before layer mapping.
         value: stop
@@ -335,9 +342,11 @@ agents:
     options:
       - label: I selected one slice and want a fresh slice-specific run.
         value: selected
+        prompt_for: selected_slice_and_feedback
         route: slice_run_starter
       - label: Revise this same slice split again.
         value: revise
+        prompt_for: feedback
         route: slice_selection_reviser
       - label: Stop this discovery run.
         value: stop
@@ -355,9 +364,11 @@ agents:
     options:
       - label: Requirements are confirmed for this same selected slice.
         value: approve
+        prompt_for: feedback
         route: layer_mapper
       - label: I edited or commented on requirements; revise this same artifact again.
         value: revise
+        prompt_for: feedback
         route: slice_requirements_reviser
       - label: Stop before layer mapping.
         value: stop
@@ -410,8 +421,9 @@ agents:
   - name: layer_selection_gate
     type: human_gate
     prompt: |
-      Review `01-layer-map.md`, then choose the next layer to detail. The human
-      selection should be written into the layer map or stated in the gate reply.
+      Review `01-layer-map.md`, then choose the next layer to detail. Enter the
+      selected layer id in the gate comment; the next agent records it in the
+      artifact automatically.
 
       Layer map artifact: `{{ layer_mapper.output.artifact_path }}`
       Layer count: {{ layer_mapper.output.layer_count }}
@@ -420,9 +432,11 @@ agents:
     options:
       - label: I selected the next layer to run.
         value: selected
+        prompt_for: selected_layer_and_feedback
         route: layer_todo_generator
       - label: Revise the layer map before selecting a layer.
         value: revise_map
+        prompt_for: feedback
         route: layer_map_reviser
       - label: Stop this slice.
         value: stop
@@ -441,9 +455,11 @@ agents:
     options:
       - label: I selected the next layer to run.
         value: selected
+        prompt_for: selected_layer_and_feedback
         route: layer_todo_generator
       - label: Revise this same layer map again.
         value: revise_map
+        prompt_for: feedback
         route: layer_map_reviser
       - label: Stop this slice.
         value: stop
@@ -508,8 +524,9 @@ agents:
   - name: layer_todo_gate
     type: human_gate
     prompt: |
-      Review the selected layer todo. Approve Gherkin, test ownership, and the
-      red-test gate state before production implementation.
+      Review the selected layer todo. Approve the Gherkin and test ownership.
+      The workflow then runs the configured full test suite as the deterministic
+      red-test check before production implementation.
 
       Selected layer: `{{ layer_todo_generator.output.selected_layer }}`
       Layer todo artifact: `{{ layer_todo_generator.output.artifact_path }}`
@@ -518,14 +535,17 @@ agents:
       Ready for implementation: {{ layer_todo_generator.output.ready_for_implementation }}
       Summary: {{ layer_todo_generator.output.summary }}
     options:
-      - label: Gherkin is approved; have the agent author and run the top-level test first.
+      - label: Gherkin is approved; have the agent author the top-level test.
         value: author_agent_test
+        prompt_for: feedback
         route: agent_test_author
-      - label: The layer todo and red-test gate are approved.
-        value: approve
-        route: implementor
+      - label: Gherkin is approved; verify the existing top-level test with the full suite.
+        value: verify_existing_test
+        prompt_for: feedback
+        route: red_suite_verifier
       - label: Revise the layer todo or gate state.
         value: revise
+        prompt_for: feedback
         route: layer_todo_reviser
       - label: Go back to layer selection.
         value: select_other_layer
@@ -547,14 +567,17 @@ agents:
       Ready for implementation: {{ layer_todo_reviser.output.ready_for_implementation }}
       Summary: {{ layer_todo_reviser.output.summary }}
     options:
-      - label: Gherkin is approved; have the agent author and run the top-level test first.
+      - label: Gherkin is approved; have the agent author the top-level test.
         value: author_agent_test
+        prompt_for: feedback
         route: agent_test_author
-      - label: The same layer todo and red-test gate are approved.
-        value: approve
-        route: implementor
+      - label: Gherkin is approved; verify the existing top-level test with the full suite.
+        value: verify_existing_test
+        prompt_for: feedback
+        route: red_suite_verifier
       - label: Revise this same layer todo or gate state again.
         value: revise
+        prompt_for: feedback
         route: layer_todo_reviser
       - label: Go back to layer selection.
         value: select_other_layer
@@ -564,7 +587,7 @@ agents:
         route: stopped
 
   - name: agent_test_author
-    description: Author and run the approved top-level test without changing production code.
+    description: Author the approved top-level test without changing production code.
     model: gpt-5.4
     reasoning:
       effort: high
@@ -576,12 +599,6 @@ agents:
       test_files_modified:
         type: array
         description: Top-level test files created or changed; production files are excluded.
-      test_command:
-        type: string
-        description: Exact command used to run the approved top-level test.
-      observed_result:
-        type: string
-        description: Concise test result, including failure summary when red.
       checkpoint_required:
         type: boolean
         description: True when authoring the approved test exposed new top-level behavior or a contradiction.
@@ -594,28 +611,65 @@ agents:
     routes:
       - to: agent_test_checkpoint_gate
         when: "{{ output.checkpoint_required }}"
-      - to: agent_test_evidence_gate
+      - to: red_suite_verifier
 
-  - name: agent_test_evidence_gate
+  - name: red_suite_verifier
+    type: script
+    description: Run the configured full suite and capture the expected-red result without failing the workflow.
+    command: sh
+    args:
+      - -lc
+      - |
+        evidence_file="$(mktemp "${TMPDIR:-/tmp}/conductor-red-suite.XXXXXX")"
+        set +e
+        {{ workflow.input.test_command }} >"$evidence_file" 2>&1
+        test_exit_code=$?
+        printf '{"test_exit_code":%s,"evidence_path":"%s"}\n' "$test_exit_code" "$evidence_file"
+        exit 0
+    timeout: 600
+    routes:
+      - to: red_suite_evidence_recorder
+
+  - name: red_suite_evidence_recorder
+    description: Persist full-suite red-gate evidence in the active layer todo.
+    model: gpt-5.4-mini
+    reasoning:
+      effort: low
+    prompt: !file prompts/red-suite-evidence-recorder.md
+    output:
+      artifact_path:
+        type: string
+        description: Active layer todo updated with full-suite evidence.
+      summary:
+        type: string
+        description: Concise evidence summary for the human gate.
+    routes:
+      - to: red_suite_evidence_gate
+
+  - name: red_suite_evidence_gate
     type: human_gate
     prompt: |
-      Review the agent-authored top-level test before any production work.
-      The layer todo must remain blocked until you record an allowed
-      `red_gate_state` and set `status: ready-for-implementation` in the
-      artifact.
+      Review the deterministic full-suite result before any production work.
+      The decision and optional comment below are written to the active todo
+      automatically; do not edit frontmatter or a dashboard by hand.
 
-      Selected layer: `{{ agent_test_author.output.selected_layer }}`
       Active layer todo: `{{ layer_todo_generator.output.artifact_path }}`
-      Test files modified: {{ agent_test_author.output.test_files_modified }}
-      Test command: {{ agent_test_author.output.test_command }}
-      Observed result: {{ agent_test_author.output.observed_result }}
-      Summary: {{ agent_test_author.output.summary }}
+      Full-suite command: `{{ workflow.input.test_command }}`
+      Exit code: {{ red_suite_verifier.output.test_exit_code }}
+      Evidence: `{{ red_suite_verifier.output.evidence_path }}`
+      Summary: {{ red_suite_evidence_recorder.output.summary }}
     options:
-      - label: I recorded the approved red-test state; start production implementation.
-        value: approve_red_test
-        route: implementor
+      - label: The full-suite failure is the expected red evidence; implement.
+        value: confirm_red
+        prompt_for: feedback
+        route: red_gate_decision_recorder
+      - label: The full suite is green; accept the existing coverage and implement.
+        value: accept_green
+        prompt_for: feedback
+        route: red_gate_decision_recorder
       - label: Revise the same layer todo or test contract.
         value: revise
+        prompt_for: feedback
         route: layer_todo_reviser
       - label: Go back to layer selection.
         value: select_other_layer
@@ -623,6 +677,24 @@ agents:
       - label: Stop this slice.
         value: stop
         route: stopped
+
+  - name: red_gate_decision_recorder
+    description: Persist the human red-gate decision and route only when implementation is allowed.
+    model: gpt-5.4-mini
+    reasoning:
+      effort: low
+    prompt: !file prompts/red-gate-decision-recorder.md
+    output:
+      proceed:
+        type: boolean
+        description: True only after the human approved a full-suite result for implementation.
+      summary:
+        type: string
+        description: Persisted decision summary.
+    routes:
+      - to: implementor
+        when: "{{ output.proceed }}"
+      - to: layer_todo_reviser
 
   - name: agent_test_checkpoint_gate
     type: human_gate
@@ -636,6 +708,7 @@ agents:
     options:
       - label: Revise the current layer todo.
         value: revise_layer_todo
+        prompt_for: feedback
         route: layer_todo_reviser
       - label: Return to layer selection.
         value: select_other_layer
@@ -684,12 +757,14 @@ agents:
     options:
       - label: Revise the current layer todo.
         value: revise_layer_todo
+        prompt_for: feedback
         route: layer_todo_reviser
       - label: Return to layer selection.
         value: select_other_layer
         route: layer_selection_gate
       - label: Proceed because this is not actually new top-level behavior.
         value: proceed
+        prompt_for: feedback
         route: verification_tests
       - label: Stop this slice.
         value: stop
@@ -768,12 +843,15 @@ agents:
     options:
       - label: Approve this layer and choose another layer.
         value: approve_more_layers
+        prompt_for: feedback
         route: layer_selection_gate
       - label: Approve this layer and run final slice review.
         value: approve_final_review
+        prompt_for: feedback
         route: final_reviewer
       - label: Send the layer back to the implementor for focused fixes.
         value: request_fixes
+        prompt_for: feedback
         route: implementor
       - label: Stop this slice.
         value: stop
@@ -818,12 +896,15 @@ agents:
     options:
       - label: Capture approved memory candidates separately.
         value: capture
+        prompt_for: feedback
         route: memory_capturer
       - label: Finish without memory capture.
         value: skip
+        prompt_for: feedback
         route: done
       - label: Revise the final review first.
         value: revise_review
+        prompt_for: feedback
         route: final_reviewer
 
   - name: memory_capturer

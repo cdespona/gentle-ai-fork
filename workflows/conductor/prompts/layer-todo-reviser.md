@@ -8,6 +8,10 @@ This is a revision pass, not a fresh layer-selection or todo-generation run.
 Read the active todo and all human or checkpoint feedback before revising it in
 place.
 
+Persist the immediately preceding Conductor gate decision and any non-empty gate
+comment in `## Decision Log`; update frontmatter only when that decision changes
+durable state.
+
 Hard rules:
 
 - Revise only `{{ layer_todo_generator.output.artifact_path }}`.

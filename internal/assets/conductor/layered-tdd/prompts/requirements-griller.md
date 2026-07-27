@@ -54,18 +54,17 @@ Artifact style:
 
 - Use visual-first structure. Prefer dashboards, tables, and Mermaid diagrams over prose.
 - Keep prose short and only use it for rationale, caveats, or evidence that cannot fit a table.
-- Put frontmatter first, then a `## Status Dashboard` table with current status, owner, task slug, artifact path, blocker count, and the next human decision.
+- Put frontmatter first. Do not repeat frontmatter state in a status dashboard.
 - For `slice-selection.md`, include:
-  - `## Slice Decision Dashboard` table with recommended action and selected slice field
   - `## Slice Options` table with slice id, goal, value, boundary, risks, dependencies, and why now/not now
   - a Mermaid flowchart showing candidate slices and the fresh-run path for the selected slice
-  - `## Human Decision` section with an empty `selected_slice` line and concise instructions
+  - `## Decision Log` table; Conductor records the selected slice and any gate comment there
 - For `00-requirements.md`, include:
-  - `## Status Dashboard` table
   - `## Scope Map` table with in-scope, out-of-scope, dependencies, and non-goals
   - `## Blockers` table with question, why it blocks, owner, and answer/status
   - `## Assumptions` table with assumption, confidence, risk if wrong, and validation path
   - `## Memory Used` table with source, current/superseded/contradicted, and impact
+  - `## Decision Log` table with decision, human comment, and timestamp
   - a small Mermaid flowchart from request to selected slice to next gate when helpful
 
 Return structured output:
