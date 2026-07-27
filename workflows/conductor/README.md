@@ -441,7 +441,7 @@ red_gate_state: observed-red
 ---
 ```
 
-Agent may write test after Gherkin approval, but production code is still blocked:
+After the agent has authored the approved test, full-suite evidence still awaits human review:
 
 ```yaml
 ---
@@ -470,11 +470,16 @@ flowchart LR
 | Step | Artifact state / action | Production code allowed? |
 | --- | --- | --- |
 | 1 | Approve Gherkin and select `agent-written-after-approval` in the layer-todo gate. Add any caveat as the optional gate comment. | No |
-| 2 | The agent adds only the approved top-level test. | No |
-| 3 | Conductor runs the configured full suite (`test_command`) and records its exit code/output in `## Evidence`. | No |
-| 4 | At the evidence gate, choose whether the recorded result is expected red or acceptable existing coverage. The decision recorder updates frontmatter and `## Decision Log`. | Yes |
+| 2 | The choice automatically records agent test ownership and the optional comment, then changes only the approved top-level-test Task Board row(s) to `agent`. Unrelated human tasks remain unchanged. | No |
+| 3 | The agent adds only the approved top-level test and marks only its Task Board row(s) done. | No |
+| 4 | Conductor runs the configured full suite (`test_command`) and records its exit code/output in `## Evidence`. | No |
+| 5 | At the evidence gate, choose whether the recorded result is expected red or acceptable existing coverage. The decision recorder updates frontmatter and `## Decision Log`. | Yes |
 
 Do not set `observed-red` manually. The deterministic full-suite verifier records the result and the decision recorder writes the allowed gate state only after the human approves it.
+
+`red_gate_state: blocked` is correct in the example: it means production code
+is blocked pending full-suite evidence and the human decision, not that the
+agent is blocked from authoring the already approved top-level test.
 
 Waived top-level red test:
 
