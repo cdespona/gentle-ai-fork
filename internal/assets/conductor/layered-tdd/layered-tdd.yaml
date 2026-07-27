@@ -427,7 +427,11 @@ agents:
 
       Layer map artifact: `{{ layer_mapper.output.artifact_path }}`
       Layer count: {{ layer_mapper.output.layer_count }}
+      {% if layer_reviewer is defined and layer_reviewer.output is defined and layer_reviewer.output.more_layers_remaining is defined and layer_reviewer.output.more_layers_remaining and layer_reviewer.output.recommended_next_layer is defined and layer_reviewer.output.recommended_next_layer %}
+      Recommended next layer: `{{ layer_reviewer.output.recommended_next_layer }}`
+      {% else %}
       Recommended next layer: `{{ layer_mapper.output.recommended_next_layer }}`
+      {% endif %}
       Summary: {{ layer_mapper.output.summary }}
     options:
       - label: I selected the next layer to run.
@@ -819,6 +823,9 @@ agents:
       more_layers_remaining:
         type: boolean
         description: Whether unfinished layers remain.
+      recommended_next_layer:
+        type: string
+        description: First eligible unfinished layer after the reviewed layer, or empty when none remain.
       issues:
         type: array
         description: Specific issues, risks, or verification gaps.

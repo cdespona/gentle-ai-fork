@@ -37,13 +37,17 @@ Tasks:
 4. Record waived layers or verification gaps.
 5. Append a concise review section to the selected layer todo.
 6. Determine whether unfinished layers remain from `01-layer-map.md`.
+7. When unfinished layers remain, identify the first eligible unfinished layer
+   according to the map's dependency order. Do not select it or change the map;
+   this is guidance for the next human selection gate. Return an empty string
+   when no eligible unfinished layer remains.
 
 Review section style:
 
 - Append a visual-first `## Layer Review` section to the layer todo.
 - Prefer tables and checklists over prose.
 - Include:
-  - `### Review Dashboard` table with layer, reviewed artifact, approval recommendation, more layers remaining, and next human decision
+  - `### Review Dashboard` table with layer, reviewed artifact, approval recommendation, more layers remaining, recommended next layer, and next human decision
   - `### Verification Matrix` table with command, exit code, pass/fail, and short evidence
   - `### Boundary Check` table with approved boundary, files changed, result, and notes
   - `### Issues And Risks` table with issue, severity, required action, and owner
@@ -54,5 +58,6 @@ Return structured output:
 - `artifact_path`: reviewed layer todo path
 - `approved_recommendation`: true if human approval is recommended
 - `more_layers_remaining`: true if unfinished layers remain
+- `recommended_next_layer`: first eligible unfinished layer, or an empty string when none remain
 - `issues`: concrete risks or gaps
 - `summary`: short review summary
