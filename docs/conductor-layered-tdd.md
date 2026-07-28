@@ -29,12 +29,14 @@ Do not edit frontmatter or a dashboard to make the workflow advance. The workflo
 
 ```mermaid
 flowchart LR
-    R["Requirements"] --> M["Layer map"]
+    P["Preflight"] --> Graphify{"Refresh Graphify?"}
+    Graphify --> R["Requirements"]
+    R --> M["Layer map"]
     M --> T["Layer todo and Gherkin"]
     T --> S["Run full test suite"]
-    S --> G{"Human reviews evidence"}
-    G -->|"approved"| I["Implementation"]
-    G -->|"revise"| T
+    S --> ReviewGate{"Human reviews evidence"}
+    ReviewGate -->|"approved"| I["Implementation"]
+    ReviewGate -->|"revise"| T
     I --> V["Test, lint, audit"]
     V --> F["Layer and final review"]
 ```
@@ -69,6 +71,7 @@ The default is `make test`. A non-zero result is captured as evidence rather tha
 | `test_command` | `make test` | Full suite: preflight, red evidence, and post-implementation verification. |
 | `lint_command` | `make lint` | Static checks before and after implementation. |
 | `security_command` | `make audit` | Dependency/CVE checks before and after implementation. |
+| `graphify_scope` | none | Focused code directory for a human-approved first Graphify build or refresh. Leave empty to refresh an existing graph from its saved root. |
 | `resume_path` | none | Existing `.github/plans/<slug>` folder to continue. |
 | `memory_vault`, `memory_project` | none | Optional Markdown-memory recall and capture. |
 
@@ -82,6 +85,36 @@ conductor run workflows/conductor/layered-tdd.yaml \
   --input test_command="make test" \
   --input lint_command="make check" \
   --input security_command="make cve"
+```
+
+## Graphify and context control
+
+The workflow now uses explicit context: agents receive only the named inputs
+they need. Markdown artifacts and Conductor gates are the durable handoff; raw
+verification output is passed only to the layer reviewer.
+
+After preflight, a human gate shows whether `graphify-out/graph.json` exists.
+Choose one path:
+
+| Choice | Result |
+| --- | --- |
+| Refresh/build | Runs Graphify before requirements. A first build needs `graphify_scope` focused on code, such as `src` or `packages/api`. |
+| Use existing | Keeps the current graph without spending time on an update. |
+| Continue without Graphify | Leaves the workflow fully functional; agents use normal focused repository inspection. |
+
+Graph-enabled discovery, mapping, todo design, test authoring, implementation,
+and review query the graph with small response budgets, then verify returned
+source locations. Agents never rebuild the graph and never treat an inferred
+edge as proof.
+
+Example first build:
+
+```bash
+conductor run workflows/conductor/layered-tdd.yaml \
+  --workspace-instructions \
+  --web \
+  --input request="Add an audit event for cancelled jobs" \
+  --input graphify_scope="src"
 ```
 
 ## Artifacts and resume

@@ -7,7 +7,8 @@ This directory contains the runnable Microsoft Conductor workflow for Gentle AI'
 ```mermaid
 flowchart LR
     Request["User request"] --> Preflight["Preflight checks"]
-    Preflight --> Requirements["00-requirements.md"]
+    Preflight --> Graphify{"Refresh Graphify?"}
+    Graphify --> Requirements["00-requirements.md"]
     Requirements --> Slice{"Multiple slices?"}
     Slice -- "yes" --> SliceDoc["slice-selection.md"]
     SliceDoc --> SliceRun["fresh slice run"]
@@ -124,10 +125,44 @@ conductor run workflows/conductor/layered-tdd.yaml \
 | `test_command` | `make test` | no | Preflight, red gate, and verification | Must be green before analysis and after implementation; after a newly added top-level test, its result is recorded as red/green evidence for human review. |
 | `lint_command` | `make lint` | no | Preflight and verification | Static checks. |
 | `security_command` | `make audit` | no | Preflight and verification | Dependency/CVE/audit checks. |
+| `graphify_scope` | none | no | Graphify refresh gate | Focused code directory for a first build or an explicit refresh. Leave empty to refresh an existing graph from its saved root. |
 | `resume_path` | none | no | Requirements griller | Existing `.github/plans/<slug>` folder for a new run; pins requirements to that path but does not skip preflight or requirements. |
 | `memory_vault` | none | no | Requirements and final capture | Absolute Markdown memory vault root. |
 | `memory_namespace` | `machine/agent-memory` | no | Requirements and final capture | Namespace under the memory vault. |
 | `memory_project` | none | no | Requirements and final capture | Project slug under the memory namespace. |
+
+## Graphify And Explicit Context
+
+This workflow uses `context.mode: explicit`. Each model-backed stage receives
+only its declared artifact paths, gate decisions, and small structured outputs.
+The layer reviewer is the sole stage that receives raw test, lint, and security
+logs. Human gates remain the review surface; artifacts remain the durable
+handoff.
+
+```mermaid
+flowchart LR
+    Security["Preflight security"] --> Status["Detect graph"]
+    Status --> Gate{"Refresh Graphify?"}
+    Gate -->|"focused scope"| Refresh["Build or update graph"]
+    Gate -->|"existing or skip"| Requirements["Requirements"]
+    Refresh --> Requirements
+```
+
+At the Graphify gate, use a focused code scope for the first build—such as
+`src`, `internal`, or `packages/api`—rather than a large mixed repository root.
+Pass it at start:
+
+```bash
+conductor run workflows/conductor/layered-tdd.yaml \
+  --workspace-instructions \
+  --web \
+  --input request="Describe the code-changing task" \
+  --input graphify_scope="src"
+```
+
+Graphify is optional. When available, requirements discovery, layer mapping,
+todo design, test authoring, implementation, and review issue bounded queries,
+verify returned source locations, and never rebuild the graph themselves.
 
 ## Artifact Map
 
@@ -545,7 +580,8 @@ Memory capture only uses Markdown memory. It does not use Engram or MCP memory t
 flowchart LR
     Tests["test_command"] --> Lint["lint_command"]
     Lint --> Security["security_command"]
-    Security --> Requirements["requirements_griller"]
+    Security --> Graphify{"Refresh Graphify?"}
+    Graphify --> Requirements["requirements_griller"]
     Tests -- fail --> Gate["preflight_failure_gate"]
     Lint -- fail --> Gate
     Security -- fail --> Gate

@@ -26,6 +26,12 @@ Tasks:
 6. Delete obsolete skeleton todos from earlier layer-map revisions when they are no longer listed in the current layer map and have no implementation/review history. If an obsolete todo has implementation or review history, keep it but mark its frontmatter `status: superseded` and add a short superseded note pointing to the current layer map.
 7. Recommend an order, but do not force it. The human chooses the next layer.
 
+Graphify boundary discovery:
+
+- If `graphify-out/graph.json` exists, query it first for callers, dependencies, communities, or shortest paths that clarify a proposed layer boundary. Use `graphify query "<question>" --budget 800`.
+- Open the returned source locations before recording a boundary. Graphify narrows navigation; repository files and the approved requirements remain authoritative.
+- Do not rebuild or update the graph, and do not paste graph output wholesale into the layer map.
+
 The layer map must include:
 
 - selected slice goal

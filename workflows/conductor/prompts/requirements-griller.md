@@ -20,6 +20,12 @@ slug or create a sibling plan folder.
 
 Your job is requirements discovery only. Do not design the implementation and do not write production code.
 
+Graphify discovery:
+
+- If `graphify-out/graph.json` exists, use `graphify query "<architecture question>" --budget 600` for an ambiguous ownership, entry-point, dependency, or impact question.
+- Open only the returned source locations to verify the answer. Treat graph relationships as navigation evidence, not as the requirements contract.
+- Do not build, refresh, or broadly dump the graph here. If no graph exists, inspect the minimum repository context normally.
+
 Markdown memory recall:
 
 - If `memory_vault` and `memory_project` are provided, load `.github/skills/conductor-memory-recall/SKILL.md`.

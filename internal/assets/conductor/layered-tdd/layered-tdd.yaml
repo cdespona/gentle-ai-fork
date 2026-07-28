@@ -18,11 +18,14 @@ workflow:
     default_model: gpt-5.4
     default_reasoning_effort: medium
   context:
-    mode: accumulate
+    # Durable artifacts are the handoff between stages. Do not replay every
+    # prior output (especially verification logs) into each model call.
+    mode: explicit
   instructions:
     - "This workflow is self-contained. Use the installed workflow prompts and any repo-local Conductor skills under `.github/skills/conductor-*/`; do not require Gentle AI documentation files to exist in the target repository."
     - "Before code-changing agent work, check whether a relevant `.github/skills/conductor-<skill>/SKILL.md` exists and follow it when applicable."
     - "If the Copilot CLI caveman skill is available, use caveman for planning notes, checkpoints, summaries, and human gate text. Keep artifact schemas, commands, paths, errors, and verification results exact and readable."
+    - "When graphify-out/graph.json exists, use Graphify only for bounded repository-navigation questions before opening returned source locations. Do not rebuild or update the graph from an agent prompt."
   limits:
     max_iterations: 80
   input:
@@ -66,6 +69,10 @@ workflow:
       type: string
       required: false
       description: Markdown memory project slug. Required for memory capture.
+    graphify_scope:
+      type: string
+      required: false
+      description: Relative code directory used only when the human asks Graphify to build or refresh its graph. Leave empty to reuse the saved graph root for an existing graph.
 
 agents:
   - name: preflight_tests
@@ -103,7 +110,7 @@ agents:
       - "{{ workflow.input.security_command }}"
     timeout: 600
     routes:
-      - to: requirements_griller
+      - to: graphify_status
         when: "{{ output.exit_code == 0 }}"
       - to: preflight_failure_gate
 
@@ -118,8 +125,113 @@ agents:
         route: preflight_tests
       - label: Continue anyway and record that preflight was waived.
         value: continue_with_waiver
-        route: requirements_griller
+        route: graphify_status
       - label: Stop before requirements analysis.
+        value: stop
+        route: stopped
+
+  - name: graphify_status
+    type: script
+    description: Detect whether a reusable Graphify repository graph is available.
+    command: sh
+    args:
+      - -lc
+      - |
+        if [ -f graphify-out/graph.json ]; then
+          printf '{"graph_available":true,"summary":"Existing Graphify graph is available."}\n'
+        else
+          printf '{"graph_available":false,"summary":"No Graphify graph exists yet."}\n'
+        fi
+    routes:
+      - to: graphify_update_gate
+
+  - name: graphify_update_gate
+    type: human_gate
+    prompt: |
+      Decide whether repository navigation should use a refreshed Graphify graph
+      before requirements discovery. Graphify is optional; the Markdown
+      artifacts and your reviews remain the authoritative workflow handoff.
+
+      Current graph: {{ graphify_status.output.summary }}
+
+      For a first build, provide a focused code directory in the optional run
+      input `graphify_scope` (for example `src`, `internal`, or `packages/api`).
+      Do not use the repository root for a large mixed code-and-document corpus.
+    options:
+      - label: Build or incrementally refresh the focused Graphify graph.
+        value: refresh
+        route: graphify_refresh
+      - label: Use the existing graph without refreshing it.
+        value: use_existing
+        route: requirements_griller
+      - label: Continue without Graphify for this run.
+        value: skip
+        route: requirements_griller
+
+  - name: graphify_refresh
+    type: script
+    description: Build a focused Graphify code graph or incrementally refresh the existing one.
+    command: sh
+    args:
+      - -lc
+      - |
+        set -u
+        graph_file="graphify-out/graph.json"
+        graph_log="$(mktemp "${TMPDIR:-/tmp}/conductor-graphify.XXXXXX")"
+        scope="${GRAPHIFY_SCOPE:-}"
+
+        if [ -f "$graph_file" ] && [ -z "$scope" ] && [ -f graphify-out/.graphify_root ]; then
+          scope="$(cat graphify-out/.graphify_root)"
+        fi
+
+        if [ -z "$scope" ]; then
+          printf '{"graph_available":false,"refresh_succeeded":false,"reason":"missing_scope","log_path":"%s","summary":"Graphify needs graphify_scope for its first focused build."}\n' "$graph_log"
+          exit 0
+        fi
+        if [ ! -d "$scope" ]; then
+          printf '{"graph_available":false,"refresh_succeeded":false,"reason":"invalid_scope","log_path":"%s","summary":"graphify_scope is not a readable directory."}\n' "$graph_log"
+          exit 0
+        fi
+        if ! command -v graphify >/dev/null 2>&1; then
+          printf '{"graph_available":false,"refresh_succeeded":false,"reason":"graphify_unavailable","log_path":"%s","summary":"The graphify CLI is not installed or not on PATH."}\n' "$graph_log"
+          exit 0
+        fi
+
+        if [ -f "$graph_file" ]; then
+          graphify "$scope" --update --directed --no-viz >"$graph_log" 2>&1
+        else
+          graphify "$scope" --directed --no-viz >"$graph_log" 2>&1
+        fi
+        graphify_exit_code=$?
+
+        if [ "$graphify_exit_code" -eq 0 ] && [ -f "$graph_file" ]; then
+          printf '{"graph_available":true,"refresh_succeeded":true,"reason":"","log_path":"%s","summary":"Graphify graph is ready for bounded repository queries."}\n' "$graph_log"
+        else
+          printf '{"graph_available":false,"refresh_succeeded":false,"reason":"graphify_failed","log_path":"%s","summary":"Graphify did not produce a usable graph; inspect the Graphify log and choose a recovery option."}\n' "$graph_log"
+        fi
+    env:
+      GRAPHIFY_SCOPE: "{{ workflow.input.graphify_scope }}"
+    routes:
+      - to: requirements_griller
+        when: "{{ output.refresh_succeeded }}"
+      - to: graphify_refresh_failure_gate
+
+  - name: graphify_refresh_failure_gate
+    type: human_gate
+    prompt: |
+      Graphify could not prepare a usable graph before requirements discovery.
+
+      Result: {{ graphify_refresh.output.summary }}
+      Reason: `{{ graphify_refresh.output.reason }}`
+      Graphify log: `{{ graphify_refresh.output.log_path }}`
+
+      Correct the run input `graphify_scope` and restart if a first build needs
+      a narrower code directory. You can also continue safely without a graph.
+    options:
+      - label: Continue without Graphify for this run.
+        value: continue_without_graph
+        route: requirements_griller
+      - label: Stop and restart with a focused graphify_scope.
         value: stop
         route: stopped
 
@@ -128,6 +240,16 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - workflow.input.request
+      - workflow.input.resume_path?
+      - workflow.input.memory_vault?
+      - workflow.input.memory_namespace?
+      - workflow.input.memory_project?
+      - graphify_status.output.graph_available?
+      - graphify_status.output.summary?
+      - graphify_refresh.output.graph_available?
+      - graphify_refresh.output.summary?
     prompt: !file prompts/requirements-griller.md
     output:
       artifact_path:
@@ -155,6 +277,8 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - requirements_griller.output.artifact_path
     prompt: !file prompts/requirements-reviser.md
     output:
       artifact_path:
@@ -199,6 +323,8 @@ agents:
   - name: slice_run_starter
     description: Create the slice-specific requirements artifact.
     model: gpt-5.4
+    input:
+      - requirements_griller.output.artifact_path
     prompt: !file prompts/slice-run-starter.md
     output:
       artifact_path:
@@ -219,6 +345,8 @@ agents:
   - name: slice_selection_reviser
     description: Reconcile human feedback into the originally created slice-selection artifact.
     model: gpt-5.4
+    input:
+      - requirements_griller.output.artifact_path
     prompt: !file prompts/slice-selection-reviser.md
     output:
       artifact_path:
@@ -241,6 +369,8 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - slice_run_starter.output.artifact_path
     prompt: !file prompts/slice-requirements-reviser.md
     output:
       artifact_path:
@@ -379,6 +509,11 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - requirements_griller.output.artifact_path
+      - slice_run_starter.output.artifact_path?
+      - graphify_status.output.graph_available?
+      - graphify_refresh.output.graph_available?
     prompt: !file prompts/layer-mapper.md
     output:
       artifact_path:
@@ -401,6 +536,8 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - layer_mapper.output.artifact_path
     prompt: !file prompts/layer-map-reviser.md
     output:
       artifact_path:
@@ -474,6 +611,11 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - layer_mapper.output.artifact_path
+      - workflow.input.test_command
+      - graphify_status.output.graph_available?
+      - graphify_refresh.output.graph_available?
     prompt: !file prompts/layer-todo-generator.md
     output:
       artifact_path:
@@ -502,6 +644,8 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - layer_todo_generator.output.artifact_path
     prompt: !file prompts/layer-todo-reviser.md
     output:
       artifact_path:
@@ -593,6 +737,10 @@ agents:
   - name: agent_test_author
     description: Author the approved top-level test without changing production code.
     model: gpt-5.4
+    input:
+      - layer_todo_generator.output.artifact_path
+      - graphify_status.output.graph_available?
+      - graphify_refresh.output.graph_available?
     reasoning:
       effort: high
     prompt: !file prompts/agent-test-author.md
@@ -639,6 +787,11 @@ agents:
     model: gpt-5.4-mini
     reasoning:
       effort: low
+    input:
+      - layer_todo_generator.output.artifact_path
+      - red_suite_verifier.output.evidence_path
+      - red_suite_verifier.output.test_exit_code
+      - workflow.input.test_command
     prompt: !file prompts/red-suite-evidence-recorder.md
     output:
       artifact_path:
@@ -687,6 +840,13 @@ agents:
     model: gpt-5.4-mini
     reasoning:
       effort: low
+    input:
+      - layer_todo_generator.output.artifact_path
+      - red_suite_verifier.output.evidence_path
+      - red_suite_verifier.output.test_exit_code
+      - red_suite_evidence_gate.output.selected
+      - red_suite_evidence_gate.output.feedback?
+      - workflow.input.test_command
     prompt: !file prompts/red-gate-decision-recorder.md
     output:
       proceed:
@@ -724,6 +884,10 @@ agents:
   - name: implementor
     description: Implement only inside the approved layer boundary.
     model: gpt-5.4
+    input:
+      - layer_todo_generator.output.artifact_path
+      - graphify_status.output.graph_available?
+      - graphify_refresh.output.graph_available?
     prompt: !file prompts/implementor.md
     output:
       selected_layer:
@@ -812,6 +976,22 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - layer_todo_generator.output.artifact_path
+      - verification_tests.output.exit_code
+      - verification_tests.output.stdout
+      - verification_tests.output.stderr
+      - verification_lint.output.exit_code
+      - verification_lint.output.stdout
+      - verification_lint.output.stderr
+      - verification_security.output.exit_code
+      - verification_security.output.stdout
+      - verification_security.output.stderr
+      - workflow.input.test_command
+      - workflow.input.lint_command
+      - workflow.input.security_command
+      - graphify_status.output.graph_available?
+      - graphify_refresh.output.graph_available?
     prompt: !file prompts/layer-reviewer.md
     output:
       artifact_path:
@@ -869,6 +1049,8 @@ agents:
     model: gpt-5.4
     reasoning:
       effort: high
+    input:
+      - layer_mapper.output.artifact_path
     prompt: !file prompts/final-reviewer.md
     output:
       artifact_path:
@@ -919,6 +1101,12 @@ agents:
     model: gpt-5.4-mini
     reasoning:
       effort: low
+    input:
+      - final_reviewer.output.artifact_path
+      - layer_mapper.output.artifact_path
+      - workflow.input.memory_vault?
+      - workflow.input.memory_namespace?
+      - workflow.input.memory_project?
     prompt: !file prompts/memory-capturer.md
     output:
       artifact_path:
@@ -950,6 +1138,11 @@ agents:
   - name: done
     type: terminate
     status: success
+    input:
+      - requirements_griller.output.artifact_path?
+      - layer_mapper.output.artifact_path?
+      - layer_todo_generator.output.artifact_path?
+      - final_reviewer.output.artifact_path?
     reason: Layered TDD slice complete.
     output_template:
       status: complete

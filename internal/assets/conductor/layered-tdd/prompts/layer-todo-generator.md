@@ -29,6 +29,11 @@ Tasks:
    - `blocked`
 6. If test ownership is `waived`, include a human-approved reason or mark the todo as blocked.
 
+Graphify test-boundary discovery:
+
+- If `graphify-out/graph.json` exists, use `graphify query "<selected behavior, test seam, or dependency question>" --budget 600` to locate the smallest credible implementation and test boundary.
+- Verify every proposed file or test seam by opening its returned source location. Do not build or update the graph.
+
 The implementor may proceed only when the red-test gate state is one of:
 
 - `observed-red`

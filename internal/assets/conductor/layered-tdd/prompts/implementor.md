@@ -31,6 +31,11 @@ Tasks:
    - recommended checkpoint route: revise current layer todo, return to layer selection, proceed because it is not new top-level behavior, or stop
 6. If no human routing is required, update the layer todo with implementation notes.
 
+Graphify implementation navigation:
+
+- If `graphify-out/graph.json` exists and a caller, dependency, or affected seam is unclear, run `graphify query "<narrow implementation question>" --budget 600` before broad repository search.
+- Open returned source locations and keep changes inside the approved todo boundary. Do not rebuild or update the graph, and do not treat inferred graph edges as proof.
+
 Artifact update style:
 
 - Use visual-first structure. Prefer dashboards, tables, and checklists over prose.

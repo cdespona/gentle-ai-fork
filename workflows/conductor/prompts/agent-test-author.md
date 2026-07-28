@@ -23,6 +23,11 @@ Hard rules:
   Gherkin, a test that needs new top-level behavior, or inconsistent approved
   scope/boundary.
 
+Graphify test navigation:
+
+- If `graphify-out/graph.json` exists and a relevant test seam is unclear, run `graphify query "<contract and test-location question>" --budget 600`, then inspect only the returned source locations.
+- Do not rebuild or update the graph. The approved todo remains the test contract.
+
 Tasks:
 
 1. Read the Gherkin, implementation boundary, task board, red-test gate, and

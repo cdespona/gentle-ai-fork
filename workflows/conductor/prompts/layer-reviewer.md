@@ -42,6 +42,11 @@ Tasks:
    this is guidance for the next human selection gate. Return an empty string
    when no eligible unfinished layer remains.
 
+Graphify boundary check:
+
+- If `graphify-out/graph.json` exists and the review needs an architecture check, query the relevant changed area with `graphify query "<boundary or dependency question>" --budget 400`.
+- Verify the returned source locations; Graphify is supporting evidence only. Do not rebuild or update the graph.
+
 Review section style:
 
 - Append a visual-first `## Layer Review` section to the layer todo.

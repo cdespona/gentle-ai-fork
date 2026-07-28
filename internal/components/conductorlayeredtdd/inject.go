@@ -69,6 +69,7 @@ func Inject(workspaceDir string, opts InjectOptions) (InjectionResult, error) {
 		"workflows/conductor/",
 		".github/plans/",
 		".github/skills/conductor-*/",
+		"graphify-out/",
 	})
 	if err != nil {
 		return InjectionResult{}, err

@@ -24,6 +24,12 @@ func TestInjectInstallsWorkflowPromptsSkillsAndGitignore(t *testing.T) {
 	if !strings.Contains(workflow, "entry_point: preflight_tests") {
 		t.Fatalf("workflow missing preflight entry point")
 	}
+	if !strings.Contains(workflow, "mode: explicit") {
+		t.Fatalf("workflow should use explicit context")
+	}
+	if !strings.Contains(workflow, "name: graphify_update_gate") {
+		t.Fatalf("workflow missing Graphify update decision gate")
+	}
 	if !strings.Contains(workflow, "default: make audit") {
 		t.Fatalf("workflow missing Makefile audit default")
 	}
@@ -56,7 +62,7 @@ func TestInjectInstallsWorkflowPromptsSkillsAndGitignore(t *testing.T) {
 	}
 
 	gitignore := readTestFile(t, filepath.Join(workspace, ".gitignore"))
-	for _, entry := range []string{"workflows/conductor/", ".github/plans/", ".github/skills/conductor-*/"} {
+	for _, entry := range []string{"workflows/conductor/", ".github/plans/", ".github/skills/conductor-*/", "graphify-out/"} {
 		if !strings.Contains(gitignore, entry) {
 			t.Fatalf(".gitignore missing %q", entry)
 		}
