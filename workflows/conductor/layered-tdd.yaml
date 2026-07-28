@@ -559,8 +559,8 @@ agents:
     type: human_gate
     prompt: |
       Review `01-layer-map.md`, then choose the next layer to detail. Enter the
-      selected layer id in the gate comment; the next agent records it in the
-      artifact automatically.
+      selected layer id in the gate field; the workflow records it in the
+      artifact before the todo agent runs.
 
       Layer map artifact: `{{ layer_mapper.output.artifact_path }}`
       Layer count: {{ layer_mapper.output.layer_count }}
@@ -573,8 +573,8 @@ agents:
     options:
       - label: I selected the next layer to run.
         value: selected
-        prompt_for: selected_layer_and_feedback
-        route: layer_todo_generator
+        prompt_for: selected_layer
+        route: layer_selection_recorder
       - label: Revise the layer map before selecting a layer.
         value: revise_map
         prompt_for: feedback
@@ -596,8 +596,8 @@ agents:
     options:
       - label: I selected the next layer to run.
         value: selected
-        prompt_for: selected_layer_and_feedback
-        route: layer_todo_generator
+        prompt_for: selected_layer
+        route: layer_map_revision_selection_recorder
       - label: Revise this same layer map again.
         value: revise_map
         prompt_for: feedback
@@ -605,6 +605,34 @@ agents:
       - label: Stop this slice.
         value: stop
         route: stopped
+
+  - name: layer_selection_recorder
+    type: script
+    description: Persist the selected layer before generating its todo.
+    input:
+      - layer_mapper.output.artifact_path
+      - layer_selection_gate.output.feedback
+    command: python3
+    args:
+      - workflows/conductor/scripts/record-layer-selection.py
+      - "{{ layer_mapper.output.artifact_path }}"
+      - "{{ layer_selection_gate.output.feedback }}"
+    routes:
+      - to: layer_todo_generator
+
+  - name: layer_map_revision_selection_recorder
+    type: script
+    description: Persist the selected layer from the revised map before generating its todo.
+    input:
+      - layer_map_reviser.output.artifact_path
+      - layer_map_revision_gate.output.feedback
+    command: python3
+    args:
+      - workflows/conductor/scripts/record-layer-selection.py
+      - "{{ layer_map_reviser.output.artifact_path }}"
+      - "{{ layer_map_revision_gate.output.feedback }}"
+    routes:
+      - to: layer_todo_generator
 
   - name: layer_todo_generator
     description: Detail the selected layer todo with Gherkin and TDD gate state.

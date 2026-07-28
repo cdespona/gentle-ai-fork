@@ -87,6 +87,7 @@ func Paths(workspaceDir string, opts InjectOptions) []string {
 
 	paths := []string{
 		filepath.Join(workspaceDir, workflowDir, "layered-tdd.yaml"),
+		filepath.Join(workspaceDir, workflowDir, "scripts", "record-layer-selection.py"),
 		filepath.Join(workspaceDir, ".gitignore"),
 	}
 	for _, file := range []string{

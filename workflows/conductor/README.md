@@ -250,7 +250,7 @@ status: needs-human-confirmation
 | `owner` | all artifacts | `human`, `agent`, specific agent name | Who currently needs to act. Updated by the workflow. |
 | `status` | all artifacts | artifact-specific | Durable state for humans and agents. Updated by the workflow. |
 | `selected_slice` | `slice-selection.md` | slice slug or id | Selected in the Conductor gate and persisted automatically. |
-| `selected_layer` | `01-layer-map.md`, `layers/*.todo.md` | layer id or todo filename | Selected in the Conductor gate and persisted automatically. |
+| `selected_layer` | `01-layer-map.md`, `layers/*.todo.md` | layer id or todo filename | The gate routes through a deterministic recorder that updates `01-layer-map.md` before todo generation. |
 | `test_ownership` | `layers/*.todo.md` | `human-written`, `agent-written-after-approval`, `waived` | Who owns top-level test creation for this layer. |
 | `red_gate_state` | `layers/*.todo.md` | `observed-red`, `not-run-human-approved`, `already-passing-human-approved`, `waived`, `blocked` | Whether production implementation may start. |
 | `memory_decision` | `99-final-review.md` | `capture`, `skip`, `revise` | Human memory intent, persisted from the gate. |

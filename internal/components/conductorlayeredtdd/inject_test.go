@@ -1,7 +1,9 @@
 package conductorlayeredtdd
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,6 +34,14 @@ func TestInjectInstallsWorkflowPromptsSkillsAndGitignore(t *testing.T) {
 	}
 	if !strings.Contains(workflow, "default: make audit") {
 		t.Fatalf("workflow missing Makefile audit default")
+	}
+	if !strings.Contains(workflow, "name: layer_selection_recorder") {
+		t.Fatalf("workflow missing deterministic layer-selection recorder")
+	}
+
+	recorderPath := filepath.Join(workspace, "workflows", "conductor", "scripts", "record-layer-selection.py")
+	if !strings.Contains(readTestFile(t, recorderPath), "os.replace") {
+		t.Fatalf("layer-selection recorder should update the layer map atomically")
 	}
 
 	prompt := readTestFile(t, filepath.Join(workspace, "workflows", "conductor", "prompts", "implementor.md"))
@@ -69,6 +79,46 @@ func TestInjectInstallsWorkflowPromptsSkillsAndGitignore(t *testing.T) {
 	}
 	if strings.Contains(gitignore, ".github/skills/\n") {
 		t.Fatalf(".github/skills root should remain trackable")
+	}
+}
+
+func TestLayerSelectionRecorderReplacesASelectionOnEveryIteration(t *testing.T) {
+	workspace := t.TempDir()
+	if _, err := Inject(workspace, InjectOptions{}); err != nil {
+		t.Fatalf("Inject() error = %v", err)
+	}
+
+	layerMapPath := filepath.Join(workspace, "01-layer-map.md")
+	content := "---\nworkflow: layered-tdd\nselected_layer: first-layer\n---\n\n# Layer Map\n"
+	if err := os.WriteFile(layerMapPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	recorderPath := filepath.Join(workspace, "workflows", "conductor", "scripts", "record-layer-selection.py")
+	command := exec.Command("python3", recorderPath, layerMapPath, "second-layer")
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("record layer selection: %v", err)
+	}
+	var result struct {
+		SelectedLayer string `json:"selected_layer"`
+	}
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("decode recorder output: %v", err)
+	}
+	if result.SelectedLayer != "second-layer" {
+		t.Fatalf("selected layer output = %q, want second-layer", result.SelectedLayer)
+	}
+
+	got := readTestFile(t, layerMapPath)
+	if strings.Contains(got, "selected_layer: first-layer") {
+		t.Fatalf("recorder left the previous selected layer in frontmatter")
+	}
+	if !strings.Contains(got, "selected_layer: \"second-layer\"") {
+		t.Fatalf("recorder did not persist the new selected layer: %q", got)
+	}
+	if !strings.Contains(got, "# Layer Map") {
+		t.Fatalf("recorder changed the layer-map body")
 	}
 }
 
