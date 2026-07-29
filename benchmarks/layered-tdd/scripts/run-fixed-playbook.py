@@ -12,10 +12,26 @@ import pexpect
 
 
 TIMEOUT_SECONDS = 900
+UNEXPECTED_GATES = (
+    "agent_test_checkpoint_gate",
+    "checkpoint_gate",
+    "preflight_failure_gate",
+    "graphify_refresh_failure_gate",
+)
 
 
 def resolve_gate(child: pexpect.spawn, name: str, option: int, field: str = "", value: str = "") -> None:
-    child.expect(rf"Agent: {name} ")
+    unexpected = "|".join(UNEXPECTED_GATES)
+    matched = child.expect(
+        [
+            rf"Agent: {name} ",
+            rf"Agent: (?P<unexpected>{unexpected}) ",
+        ]
+    )
+    if matched == 1:
+        raise RuntimeError(
+            f"unexpected gate before {name}: {child.match.group('unexpected')}"
+        )
     child.expect(r"Select option \[[0-9/]+\]: ")
     child.sendline(str(option))
     if field:
@@ -30,18 +46,27 @@ def main() -> None:
     args = parser.parse_args()
 
     project = args.project.resolve()
+    run_log = args.run_log.resolve()
+    try:
+        run_log.relative_to(project)
+    except ValueError:
+        pass
+    else:
+        parser.error("--run-log must be outside the benchmark project")
+
     request = (project / ".benchmark" / "request.md").read_text(encoding="utf-8")
     case = json.loads(
         (project / ".benchmark" / "case.json").read_text(encoding="utf-8")
     )
-    args.run_log.parent.mkdir(parents=True, exist_ok=True)
+    run_log.parent.mkdir(parents=True, exist_ok=True)
+    debug_log = run_log.with_name(f"{run_log.name}.conductor-debug.log")
 
     command = [
         "run",
         "workflows/conductor/layered-tdd.yaml",
         "--workspace-instructions",
         "--log-file",
-        str(project / ".benchmark" / "conductor-debug.log"),
+        str(debug_log),
         "--input",
         "task_slug=benchmark-idempotent-cancellation",
         "--input",
@@ -56,7 +81,7 @@ def main() -> None:
 
     environment = os.environ.copy()
     environment.setdefault("NO_COLOR", "1")
-    with args.run_log.open("w", encoding="utf-8") as log:
+    with run_log.open("w", encoding="utf-8") as log:
         child = pexpect.spawn(
             "conductor",
             command,
