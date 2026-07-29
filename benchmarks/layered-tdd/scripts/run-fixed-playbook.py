@@ -39,7 +39,6 @@ def main() -> None:
     command = [
         "run",
         "workflows/conductor/layered-tdd.yaml",
-        "-q",
         "--workspace-instructions",
         "--log-file",
         str(project / ".benchmark" / "conductor-debug.log"),

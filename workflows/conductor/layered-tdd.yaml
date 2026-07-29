@@ -611,12 +611,12 @@ agents:
     description: Persist the selected layer before generating its todo.
     input:
       - layer_mapper.output.artifact_path
-      - layer_selection_gate.output.selected_layer
+      - layer_selection_gate.output.additional_input.selected_layer
     command: python3
     args:
       - workflows/conductor/scripts/record-layer-selection.py
       - "{{ layer_mapper.output.artifact_path }}"
-      - "{{ layer_selection_gate.output.selected_layer }}"
+      - "{{ layer_selection_gate.output.additional_input.selected_layer }}"
     routes:
       - to: layer_todo_generator
 
@@ -625,12 +625,12 @@ agents:
     description: Persist the selected layer from the revised map before generating its todo.
     input:
       - layer_map_reviser.output.artifact_path
-      - layer_map_revision_gate.output.selected_layer
+      - layer_map_revision_gate.output.additional_input.selected_layer
     command: python3
     args:
       - workflows/conductor/scripts/record-layer-selection.py
       - "{{ layer_map_reviser.output.artifact_path }}"
-      - "{{ layer_map_revision_gate.output.selected_layer }}"
+      - "{{ layer_map_revision_gate.output.additional_input.selected_layer }}"
     routes:
       - to: layer_todo_generator
 

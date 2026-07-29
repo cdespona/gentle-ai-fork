@@ -39,19 +39,21 @@ func TestInjectInstallsWorkflowPromptsSkillsAndGitignore(t *testing.T) {
 		t.Fatalf("workflow missing deterministic layer-selection recorder")
 	}
 	for _, gateField := range []string{
-		"layer_selection_gate.output.selected_layer",
-		"layer_map_revision_gate.output.selected_layer",
+		"layer_selection_gate.output.additional_input.selected_layer",
+		"layer_map_revision_gate.output.additional_input.selected_layer",
 	} {
 		if !strings.Contains(workflow, gateField) {
-			t.Fatalf("workflow does not pass named gate field %q to the layer-selection recorder", gateField)
+			t.Fatalf("workflow does not pass nested named gate field %q to the layer-selection recorder", gateField)
 		}
 	}
 	for _, staleField := range []string{
 		"layer_selection_gate.output.feedback",
 		"layer_map_revision_gate.output.feedback",
+		"layer_selection_gate.output.selected_layer",
+		"layer_map_revision_gate.output.selected_layer",
 	} {
 		if strings.Contains(workflow, staleField) {
-			t.Fatalf("workflow still reads nonexistent layer-selection gate field %q", staleField)
+			t.Fatalf("workflow still reads nonexistent flat layer-selection gate field %q", staleField)
 		}
 	}
 
