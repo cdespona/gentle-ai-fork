@@ -76,6 +76,19 @@ Follow [cases/idempotent-cancellation/gates.md](cases/idempotent-cancellation/ga
 
 If an agent creates different layers or a gate needs an unplanned revision, retain the run but mark it non-comparable in the result notes.
 
+For repeatable terminal runs, the playbook can be driven automatically after
+materialization:
+
+```bash
+python3 /absolute/path/to/benchmarks/layered-tdd/scripts/run-fixed-playbook.py \
+  /path/to/generated/project \
+  --run-log /path/to/conductor-output.txt
+```
+
+The runner waits for each named gate and provides its text field separately. It
+fails instead of guessing when the workflow reaches an unexpected revision or
+checkpoint route.
+
 ## Verification Modes
 
 | Mode | Test command | Purpose |
@@ -118,4 +131,3 @@ Use at least three completed runs per promising variant and compare medians. A o
 - [ ] Same Graphify state at run start.
 - [ ] Oracle passes and forbidden boundaries remain untouched.
 - [ ] Revision or retry deviations are recorded.
-
